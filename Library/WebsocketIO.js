@@ -7,7 +7,7 @@ function WebsocketIO(listener, isSSL)
 	NetworkIO.call(this, listener);
 	
 	this.socket = null;
-	this.protocols = '';
+	this.protocols = undefined;
 	this.isSSL = isSSL;
 }
 afc.extendsClass(WebsocketIO, NetworkIO);
@@ -16,6 +16,11 @@ afc.extendsClass(WebsocketIO, NetworkIO);
 WebsocketIO.prototype.isStart = function()
 {
 	return (this.socket!=null);
+};
+
+WebsocketIO.prototype.setProtocols = function(protocols)
+{
+	this.protocols = protocols;
 };
 
 WebsocketIO.prototype.startIO = function(address, port)
@@ -87,7 +92,7 @@ WebsocketIO.prototype.stopIO = function(isClosed)
 	this.socket = null;
 };
 
-//data is Uint8Array
+//data is String, Blob, ArrayBuffer(Uint8Array)
 WebsocketIO.prototype.sendData = function(data, callback)
 {
 	if(!this.isStart()) return;

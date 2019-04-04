@@ -919,8 +919,7 @@ QueryManager.prototype.sendProcess = function(aquery, menuNo, groupName, beforeI
 };
 
 
-//if buf is array, type of array is Uint8Array
-//or buf is string
+//if buf is array, type of array is Uint8Array, String, ABuffer
 QueryManager.prototype.sendBufferData = function(buf)
 {
 	var thisObj = this;

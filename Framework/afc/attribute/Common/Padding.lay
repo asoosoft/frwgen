@@ -1,0 +1,18 @@
+<div data-max-_alabel="1" class="_AView-Style ui-droppable" data-base="_AView" data-class="_AView" data-flag="1111" data-max-_abutton="1" data-max-_atextfield="1" data-max-_aview="1" style="width: 100%; height: 65px; font-size: 12px; left: 0px; top: 0px; border: 0px solid rgb(255, 255, 255); background-color: rgba(0, 0, 0, 0);" temp-height="65" temp-width="250">
+    <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="Padding--Label18" style="width: 30%; left: 0px; position: absolute; text-align: right; float: none; top: 10px;">
+        <span>Left</span>
+    </span>
+    <input data-style="prop_common_input" data-group="CSS_VALUE" data-base="_ATextField" data-class="PropTextField" data-flag="0101" class="_ATextField-Style prop_common_input" data-listener-change="_AView:onNumberValueChange" data-listener-keydown="_AView:onNumberValueKeyDown" id="Padding--padding-left" style="width: 18%; left: 30%; position: absolute; float: none; margin-left: 5px; padding-left: 5px; border-radius: 2px; font-size: 11px; top: 10px; height: 20px;" type="text" value="">
+        <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="Padding--Label20" style="width: 18%; left: 48%; position: absolute; text-align: right; float: none; margin-left: 10px; top: 10px;">
+            <span>Top</span>
+        </span>
+        <input data-style="prop_common_input" data-group="CSS_VALUE" data-base="_ATextField" data-class="PropTextField" data-flag="0101" class="_ATextField-Style prop_common_input" data-listener-change="_AView:onNumberValueChange" data-listener-keydown="_AView:onNumberValueKeyDown" id="Padding--padding-top" style="width: 18%; left: 66%; position: absolute; float: none; margin-left: 20px; padding-left: 5px; border-radius: 2px; font-size: 11px; top: 10px; height: 20px;" type="text" value="">
+            <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="Padding--Label19" style="width: 30%; left: 0px; top: 35px; position: absolute; text-align: right; float: none;">
+                <span>Right</span>
+            </span>
+            <input data-style="prop_common_input" data-group="CSS_VALUE" data-base="_ATextField" data-class="PropTextField" data-flag="0101" class="_ATextField-Style prop_common_input" data-listener-change="_AView:onNumberValueChange" data-listener-keydown="_AView:onNumberValueKeyDown" id="Padding--padding-right" style="width: 18%; left: 30%; top: 35px; position: absolute; float: none; margin-left: 5px; padding-left: 5px; border-radius: 2px; font-size: 11px;" type="text" value="">
+                <input data-style="prop_common_input" data-group="CSS_VALUE" data-base="_ATextField" data-class="PropTextField" data-flag="0101" class="_ATextField-Style prop_common_input" data-listener-change="_AView:onNumberValueChange" data-listener-keydown="_AView:onNumberValueKeyDown" id="Padding--padding-bottom" style="width: 18%; left: 66%; top: 35px; position: absolute; float: none; margin-left: 20px; padding-left: 5px; border-radius: 2px; font-size: 11px;" type="text" value="">
+                    <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="Padding--Label21" style="width: 18%; top: 35px; position: absolute; text-align: right; float: none; margin-left: 10px; left: 48%;">
+                        <span>Bottom</span>
+                    </span>
+                </div>

@@ -1,0 +1,25 @@
+<div class="_AView-Style ui-droppable" data-max-_acheckbox="1" data-class="_AView" data-max-_abutton="1" data-base="_AView" data-flag="1111" data-max-_aimage="2" data-max-_alabel="3" data-max-_aselectbox="1" data-max-_atextfield="1" data-max-_aview="1" data-max-proptextfield="1" style="width: 100%; height: 115px; font-size: 12px; left: 0px; top: 0px; background-color: rgba(0, 0, 0, 0);" temp-height="130" temp-width="250">
+    <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="_AView--Label1" style="width: 30%; height: 25px; left: 0px; top: 85px; position: absolute; text-align: right; float: none;">
+        <span>Color</span>
+    </span>
+    <span class="_AImage-Style color-picker-btn" data-base="_AImage" data-class="_AImage" data-flag="0001" data-group="CSS_VALUE" data-listener-actionup="_AView:onColorPickerClick" data-style="color-picker-btn" id="_AView--color" style="width: 20px; height: 20px; left: 30%; top: 85px; position: absolute; margin-left: 5px;"></span>
+    <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="_AView--ALabel1" style="width: 30%; height: 25px; left: 0px; top: 35px; position: absolute; text-align: right; float: none;">
+        <span>
+            Size
+        </span>
+    </span>
+    <input data-listener-change="_AView:onNumberValueChange" data-style="prop_common_input" data-base="_ATextField" data-class="PropTextField" data-flag="0101" class="_ATextField-Style prop_common_input" data-group="CSS_VALUE" data-listener-keydown="_AView:onNumberValueKeyDown" id="_AView--font-size" style="width: 60%; height: 25px; left: 30%; top: 35px; position: absolute; float: none; margin-left: 5px; padding-left: 5px; border-radius: 2px;" type="text" value=""><span class="_ACheckBox-Style checkbox-normal" data-base="_ACheckBox" data-class="_ACheckBox" data-flag="0001" data-group="CSS_VALUE" data-listener-click="_AView:onCheckBtnClick" id="_AView--font-weight" style="width: 50px; height: 20px; left: 66%; top: 60px; position: absolute; line-height: 20px; margin-left: 15px;">Bold</span>
+        <select class="_ASelectBox-Style prop_common_input" data-base="_ASelectBox" data-class="_ASelectBox" data-flag="0001" data-group="CSS_VALUE" data-listener-change="ALabelAttrProp:onSelectValueChange" data-style="prop_common_input" id="_AView--font-style" style="width: 36%; height: 25px; left: 30%; top: 60px; position: absolute; margin-left: 5px;"><option value="inherit">inherit</option>
+            <option value="normal">normal</option>
+            <option value="italic">italic</option></select>
+        <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="_AView--ALabel2" style="width: 30%; height: 25px; left: 0px; top: 60px; position: absolute; text-align: right; float: none;">
+            <span>Effect</span>
+        </span>
+        <input class="_ATextField-Style prop_common_input" data-listener-change="_AView:onTextValueChange" data-class="PropTextField" data-flag="0101" data-group="CSS_VALUE" data-base="_ATextField" data-style="prop_common_input" id="_AView--font-family" style="width: 50%; height: 25px; left: 30%; position: absolute; float: none; margin-left: 5px; padding-left: 5px; border-radius: 2px; top: 10px;" type="text" value="">
+            <button class="_AButton-Style prop_comm_morebtn_normal _AButton-normal" data-base="_AButton" data-class="_AButton" data-flag="0001" data-listener-click="_AView:onFontPickerClick" data-state="0" data-style="prop_comm_morebtn_normal|prop_comm_morebtn_touch|prop_comm_morebtn_touch" style="width: 10%; height: 25px; left: 80%; top: 10px; position: absolute; margin-left: 10px; font-size: 11px; border-radius: 3px;">
+                ...
+            </button>
+            <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="_AView--Label3" style="width: 30%; height: 25px; left: 0px; top: 10px; position: absolute; text-align: right; float: none;">
+                <span>Font</span>
+            </span>
+        </div>

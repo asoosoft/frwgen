@@ -230,7 +230,8 @@ AWindow.prototype.init = function(context)
 		isResizable: false,
 		isDraggable: false,
 		//isAbsolute: false
-		inParent: false				//부모 컨테이너 안에 창을 띄울 경우, 모달리스(isModal:false)이고 부모를 클릭해도 항상 부모보다 위에 보이게 하려면 이 값을 true 로 셋팅해야 한다.
+		inParent: false,			//부모 컨테이너 안에 창을 띄울 경우, 모달리스(isModal:false)이고 부모를 클릭해도 항상 부모보다 위에 보이게 하려면 이 값을 true 로 셋팅해야 한다.
+		focusOnInit : false			//init될때 자동으로 윈도우의 첫번째 컴포넌트(tabIndex기준)에 포커스
 		
 	}, true);
 	

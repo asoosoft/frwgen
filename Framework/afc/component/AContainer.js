@@ -114,7 +114,7 @@ AContainer.prototype.setView = function(view, isFull)
 	this.tabKey = new TabKeyController();
 	this.tabKey.init(this.view);
 	
-	this.setTabKeyComponent();
+	this.setTabKeyComponent(!this.option.focusOnInit);
 	
 	//iphone web
 	if(AContainer.disableIosScroll)

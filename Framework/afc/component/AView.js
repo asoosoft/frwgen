@@ -299,7 +299,7 @@ AView.prototype.init = function(context, evtListener)
 	*/
 	
 	//-----------------------------------------------------------------------
-	//	asoocool 2019.04.05 ios 도 -webkit-backface-visibility 관련 추가
+	//	asoocool 2019.04.09 
 	var val = this.$ele.css('overflow');
 
 	if(val=='auto' || val=='scroll')
@@ -316,15 +316,15 @@ AView.prototype.init = function(context, evtListener)
 		{
 			val = this.$ele.css('z-index');
 			if(!val || val == 'auto') this.$ele.css('z-index', 0);
-		}
-		
-		// 여러 absolue 태그가 중첩되어 스크롤 기능이 작동될 때
-		// 겹쳐지는 버그 수정(z-index 관련 오류)
-		this.$ele.css('-webkit-backface-visibility', afc.isSimulator?'':'hidden');
 			
-		// 이미 backface0visibility 값이 SpiderGen에서 화면 오픈 할 때 hidden으로 처리되었으므로 일단 제거하고
-		// 추후에 아래의 내용으로 변경할지 고민 필요
-		//if(!afc.isSimulator && !window._afc) this.$ele.css('-webkit-backface-visibility', 'hidden');
+			// 여러 absolue 태그가 중첩되어 스크롤 기능이 작동될 때
+			// 겹쳐지는 버그 수정(z-index 관련 오류)
+			this.$ele.css('-webkit-backface-visibility', afc.isSimulator?'':'hidden');
+
+			// 이미 backface0visibility 값이 SpiderGen에서 화면 오픈 할 때 hidden으로 처리되었으므로 일단 제거하고
+			// 추후에 아래의 내용으로 변경할지 고민 필요
+			//if(!afc.isSimulator && !window._afc) this.$ele.css('-webkit-backface-visibility', 'hidden');
+		}
 	}
 	
 	//-----------------------------------------------------------------------	

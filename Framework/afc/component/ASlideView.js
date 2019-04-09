@@ -140,11 +140,10 @@ ASlideView.prototype.onBtnClick = function(comp, info)
 ASlideView.prototype.selectButton = function(selBtn)
 {
 	if(this.selectBtn) this.selectBtn.enable(true);
-	if(selBtn)
-	{
-		selBtn.enable(false);
-		this.selectBtn = selBtn;
-	}
+	if(selBtn) selBtn.enable(false);
+	
+	// removeAllItems에서 선택된 버튼을 제거하기 위해 selBtn을 undefined로 보내는 경우에도 내부 selectBtn 변수가 초기화 되어야 한다.
+	this.selectBtn = selBtn;
 };
 
 //여러개의 url 을 동시에 추가한다. 단, urlArr 과 dataArr 은 1:1 로 매칭된다.

@@ -1,6 +1,0 @@
-<div data-max-_acheckbox="1" data-max-_alistview="1" class="_AView-Style ui-droppable" data-class="_AView" data-flag="1111" data-max-_abutton="1" data-base="_AView" data-max-_aimage="1" data-max-_alabel="2" data-max-_aselectbox="1" data-max-_atextarea="1" data-max-_atextfield="1" data-max-_aview="1" style="width: 100%; height: 90px; left: 0px; top: 0px; font-size: 12px; border: 0px solid rgb(255, 255, 255); background-color: rgba(0, 0, 0, 0);" temp-height="90" temp-width="280">
-    <span class="_ALabel-Style prop_common_label" data-base="_ALabel" data-class="_ALabel" data-flag="0001" data-style="prop_common_label" id="Appearance--Label9" style="width: 30%; height: 25px; left: 0px; top: 10px; position: absolute; text-align: right; float: none;">
-        <span>Default Data</span>
-    </span>
-    <textarea class="_ATextArea-Style" data-base="_ATextArea" data-class="_ATextArea" data-flag="0001" data-group="TAG_VALUE" data-listener-change="_AView:onTextValueChange" id="_AView--option" style="width: 60%; height: 70px; left: 30%; top: 10px; position: absolute; margin-left: 5px; resize: none; border-radius: 3px;"></textarea>
-</div>

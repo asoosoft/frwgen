@@ -114,6 +114,7 @@ AFlexLayout.prototype.copyItemProperty = function(srcComp, inx)
 	this.setFlexBasis(inx,	srcComp.getFlexBasis(inx));
 	this.setFlexAlign(inx,	srcComp.getFlexAlign(inx));
 	this.setFlexPadding(inx,srcComp.getFlexPadding(inx));
+	this.setFlexMargin(inx,srcComp.getFlexMargin(inx));
 };
 
 AFlexLayout.prototype.initLayoutComp = function(evtListener)
@@ -159,10 +160,13 @@ AFlexLayout.prototype.getViewDirection = function()
 
 //inx 값을 지정하면 그 위치 앞에 추가한다.
 
-//Flex Item의 공간이 확보(grow, basis 를 사용하여)되어 있는 경우 내부 컴포넌트의 0px, 0px, 100%, 100% 가 작동하려면 relative 나 absolute 로 지정해야 한다.
-//공간 확보가 되어 있지 않으면 absolute 는 아이템 공간 밖으로 나가고 아이템은 공간이 확보되지 않은 상태로 유지된다.
-//공간 확보가 되어 있지 않은 경우는 relative 로 지정해 주면 컴포넌트 사이즈 만큼 자동으로 아이템의 공간이 확보된다. 
-//이 경우 퍼센트는 작동하지 않는다.
+//Flex Item의 공간이 확보(grow, basis 를 사용하여)되어 있는 경우 내부 컴포넌트의 0px, 0px, 100%, 100% 가 작동하려면 absolute 로 지정해야 한다.
+//(direction 이 row 인 경우는 absolute, relative 둘다 되고, column 인 경우는 absolute 인 경우만 된다.)
+//공간 확보가 되어 있지 않으면 absolute 는 아이템 공간 밖으로 나가고 아이템은 공간이 확보되지 않은 상태가 된다.
+//
+//공간 확보가 되어 있지 않은 경우, relative 로 지정해 주면 컴포넌트 사이즈 만큼 자동으로 아이템의 공간이 확보된다. (기본 동작) 
+//이 경우 컴포넌트에 퍼센트를 주면 컴포넌트의 내부 컨텐츠에 따라 다른게 작동한다.(사이즈 auto 처럼 작동된다.)
+//
 //특이점, Wrap 옵션이 norwap 이면 Align Items 의 stretch 설정 후 100% 가 작동하는데, 설정값이 wrap 이면 줄이 바뀌는 순간 작동하지 않는다.
 
 AFlexLayout.prototype.layComponent = function(acomp, inx, flexGrow)
@@ -341,14 +345,29 @@ AFlexLayout.prototype.getFlexShrink = function(index)
 	return val;
 };
 
-AFlexLayout.prototype.setFlexPadding = function(index, padding) { this.setFlexVal(index,'padding', padding); };
+AFlexLayout.prototype.setFlexPadding = function(index, padding) 
+{ 
+	var item = this.getItem(index)[0];
+	item.style['padding'] = padding;
+};
 AFlexLayout.prototype.getFlexPadding = function(index) 
 { 
-	var val = this.getFlexVal(index,'padding');
-	if(val=='0px') return '';
-	
-	return val;
+	var item = this.getItem(index)[0];
+	return item.style['padding'];
 };
+
+
+AFlexLayout.prototype.setFlexMargin = function(index, margin) 
+{ 
+	var item = this.getItem(index)[0];
+	item.style['margin'] = margin;
+};
+AFlexLayout.prototype.getFlexMargin = function(index) 
+{ 
+	var item = this.getItem(index)[0];
+	return item.style['margin'];
+};
+
 
 AFlexLayout.prototype.setFlexOrder = function(index, flexOrder) { this.setFlexVal(index,'order', flexOrder); };
 AFlexLayout.prototype.getFlexOrder = function(index) { return this.getFlexVal(index,'order');	};

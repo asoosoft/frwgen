@@ -255,13 +255,8 @@
 {
 	position: absolute;
 	box-sizing: border-box;
+	overflow: auto;
 }
-/*
-.AGrid-Style tr
-{
-	height: 30px;
-}
-*/
 
 .AGrid-Style td
 {

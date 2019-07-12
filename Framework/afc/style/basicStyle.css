@@ -371,7 +371,7 @@ body
 
 .AScrollBar-Style
 {
-	background-color: #d9d9d9;
+	
 }
 
 
@@ -381,7 +381,8 @@ body
 /*-------------------------------- AListView ---------------------------------------*/
 .AListView-Style
 {
-	background: #efefef;
+	/*background: #efefef;*/
+	background-color: #f1f3f5;
 }
 
 .AListView-select

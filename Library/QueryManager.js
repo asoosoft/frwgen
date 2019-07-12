@@ -50,6 +50,7 @@ function QueryManager(name)
 	this.packetId = 0;
 	
 	this.isShowProgress = true;
+	this.isVisibleUpdate = true;	//보여질 경우만 데이터를 업데이트를 하는 옵션
 	this.timeoutSec = 15; //zero is unlimit
 	
 	this.errCodeMap = {};
@@ -249,7 +250,9 @@ QueryManager.prototype.getRealComps = function(dataKey)
 	return this.realComps[dataKey];
 };
 
-//keyArr = [ KR004LTC__USD__, KR004LTC__USD__,  ... ]
+//keyArr = [ KR004LTC__USD__, KR004LTC__USD__,  ... ], 
+//이것은 서버에게, 설정한 키값과 관련된 값이 변경되면 리얼을 전송해 달라고 요청하기 위한 값이다.
+//서버에서는 키값과 관련되어져 있는 값이 변경되면 리얼을 내려준다. 사용하지 않으면 [''], realDataToComp 호출 시 key 값을 '' 로 넣어줌.
 //compArr = [acomp, acomp, ...]
 //updateType : -1/prepend, 0/update, 1/append
 QueryManager.prototype.registerReal = function(aquery, realField, keyArr, compArr, updateType, callback)
@@ -258,7 +261,8 @@ QueryManager.prototype.registerReal = function(aquery, realField, keyArr, compAr
 		
 	if(typeof(aquery)=='string') aquery = AQuery.getSafeQuery(aquery);
 	
-	//문자열이면 컨테이너 아이디가 들어오고 매핑되어져 있는 컴포넌트를 얻어서 등록한다.
+	//문자열이면 컨테이너 아이디가 들어오고 
+	//현재 컨테이너에서 aquery(리얼TR) 로 매핑되어져 있는 모든 컴포넌트를 얻어서 등록한다.
 	if(typeof(compArr)=='string') compArr = aquery.getQueryComps(compArr, 'output');
 
 	for(i=0; i<keyArr.length; i++)
@@ -302,13 +306,24 @@ QueryManager.prototype.registerReal = function(aquery, realField, keyArr, compAr
 	
 	if(compArr)
 	{
+		//asoocool 2019/4/19
+		//복수의 realType 을 지정하기 위해 AQuery 쪽으로 옮김
+		//기존 코드도 작동하도록 함. 차후에 제거
+
+		var realType = aquery.getRealType();
+		if(realType!=undefined) updateType = realType;
+		
+		if(!updateType) updateType = 0;
+	
 		//set updateType to component
 		for(j=0; j<compArr.length; j++)
 		{
 			comp = compArr[j];
-			if(!updateType) 
+			comp.updateType = updateType;
+			
+			if(updateType==0 || updateType==2) 
 			{
-				comp.updateType = 0;
+				//comp.updateType = 0;
 				
 				// setRealMap을 직접 호출하고 나중에 리얼을 등록하고 싶은 경우를 위해 수정
 				// 1. setRealMap(realField)
@@ -316,7 +331,7 @@ QueryManager.prototype.registerReal = function(aquery, realField, keyArr, compAr
 				// 3. 조회N 수신 후 리얼등록(realField값 null로 세팅)
 				if(comp.setRealMap && realField) comp.setRealMap(realField);	//그리드 같은 컴포넌트는 realMap 이 존재한다.
 			}
-			else comp.updateType = updateType;
+			//else comp.updateType = updateType;
 		}
 	}
 	
@@ -539,7 +554,7 @@ QueryManager.prototype.queryProcess = function(recvObj)
 	//var dataSize = this.rcvBuf.getDataSize(),
 	//	cbObj = this.getQueryCallback(this.packetInfo.packetId);
 	
-	var cbObj = null, dataSize = 0;
+	var cbObj = null, dataSize = 0, thisObj = this;
 	
 	if(this.rcvBuf) dataSize = this.rcvBuf.getDataSize();
 		
@@ -651,10 +666,12 @@ QueryManager.prototype.queryProcess = function(recvObj)
 				//var tab = qryComp.getRootView().tab;
 				//if(tab && $(tab.content).is(':hidden')) continue;
 				
-				//비활성화된 view 는 적용되지 않도록
-				item = qryComp.getRootView().item;
-				if(item && $(item).is(':hidden')) continue;
-				
+				if(thisObj.isVisibleUpdate)
+				{
+					//비활성화된 view 는 적용되지 않도록
+					item = qryComp.getRootView().item;
+					if(item && $(item).is(':hidden')) continue;
+				}
 
 				//groupName 을 지정해 줬으면 같은 그룹네임인지 비교
 				if( cbObj.groupName && cbObj.groupName!=qryComp.getGroupName() ) continue;
@@ -692,12 +709,15 @@ QueryManager.prototype.realDataToComp = function(key, queryData)
 			//asoocool, 컴포넌트 유효성 검사
 			if(!qryComp.isValid()) continue;
 			
-			//비활성화된 view 는 적용되지 않도록
-			// qryComp가 container인 경우에는 getRootView 함수가 없으므로 체크한다.
-			if(qryComp.getRootView)
+			if(this.isVisibleUpdate)
 			{
-				item = qryComp.getRootView().item;
-				if(item && $(item).is(':hidden')) continue;
+				//비활성화된 view 는 적용되지 않도록
+				// qryComp가 container인 경우에는 getRootView 함수가 없으므로 체크한다.
+				if(qryComp.getRootView)
+				{
+					item = qryComp.getRootView().item;
+					if(item && $(item).is(':hidden')) continue;
+				}
 			}
 			
 			if(qryComp.realCallbacks) 
@@ -710,6 +730,8 @@ QueryManager.prototype.realDataToComp = function(key, queryData)
 			qryComp.updateComponent(queryData);
 		}
 	}
+		
+	return compArray;
 };
 
 QueryManager.prototype.sendProcessByComp = function(acomp, groupName, beforeInBlockBuffer, afterOutBlockData, afterUpdateComponent)
@@ -755,7 +777,7 @@ QueryManager.prototype.sendProcessByNames = function(queryNames, menuNo, groupNa
 QueryManager.prototype.sendProcess = function(aquery, menuNo, groupName, beforeInBlockBuffer, afterOutBlockData, afterUpdateComponent)
 {
 //############################################
-	if(this.isShowProgress) AIndicator.show();
+	if(this.isShowProgress && menuNo) AIndicator.show();
 //############################################
 
 	var trName = aquery.getName();
@@ -778,10 +800,13 @@ QueryManager.prototype.sendProcess = function(aquery, menuNo, groupName, beforeI
 		{
 			qryComp = compArray[i];
 			
-			//비활성화된 탭은 적용되지 않도록
-			//비활성화된 view 는 적용되지 않도록
-			item = qryComp.getRootView().item;
-			if(item && $(item).is(':hidden')) continue;
+			if(this.isVisibleUpdate)
+			{
+				//비활성화된 탭은 적용되지 않도록
+				//비활성화된 view 는 적용되지 않도록
+				item = qryComp.getRootView().item;
+				if(item && $(item).is(':hidden')) continue;
+			}
 
 			//groupName 을 지정해 줬으면 같은 그룹네임인지 비교
 			if( groupName && groupName!=qryComp.getGroupName() ) continue;			
@@ -845,53 +870,57 @@ QueryManager.prototype.sendProcess = function(aquery, menuNo, groupName, beforeI
 	}
 	//########
 	
-	//asoocool dblTostr
-	var cbObj = 
+	if(menuNo)
 	{
-		'menuNo': menuNo, 'groupName': groupName, 'func': afterOutBlockData, 'timeout': null,
-		'trName': trName, 'dblTostr': this.dblTostr,
-		'ucfunc': afterUpdateComponent, 'qm': this
-	};
-	
-	//asoocool dblTostr
-	//cbObj 에 셋팅하고 바로 지운다.
-	this.dblTostr = undefined;
-	
-	this.setQueryCallback(packetId, cbObj);
-	
-	//------------------------------------------------------------
-	//	네트웍 타임아웃 셋팅
-	if(this.timeoutSec>0)
-	{
-		var thisObj = this;
-
-		cbObj.timeout = setTimeout(function()
+		//asoocool dblTostr
+		var cbObj = 
 		{
-			if(thisObj.isShowProgress) AIndicator.hide();
-			
-			thisObj.errorData.trName = trName;
-			thisObj.errorData.errCode = 10001;
-			//thisObj.errorData.errMsg = '서버와의 접속이 지연되고 있습니다.';
-			thisObj.errorData.errMsg = '통신 상태가 원활하지 않습니다.(1) : ' + thisObj.errorData.trName + ',' + menuNo + ',' + groupName;
-			
-			//콜백 객체 제거
-			thisObj.getQueryCallback(packetId);
-			
-			//타임아웃
-			if(afterOutBlockData) afterOutBlockData.call(thisObj, null);
-			//if(listener && listener.afterOutBlockData) listener.afterOutBlockData(null, groupName, thisObj.errorData.trName, thisObj);
-			
-			qLen = thisObj.queryListeners.length;
-			for(i=0; i<qLen; i++)
-			{
-				listener = thisObj.queryListeners[i];
-				
-				if(listener.afterRecvBufferData) listener.afterRecvBufferData(thisObj);
-				if(listener.afterOutBlockData) listener.afterOutBlockData(null, thisObj);
-			}
-			
+			'menuNo': menuNo, 'groupName': groupName, 'func': afterOutBlockData, 'timeout': null,
+			'trName': trName, 'dblTostr': this.dblTostr,
+			'ucfunc': afterUpdateComponent, 'qm': this
+		};
 
-		}, this.timeoutSec*1000);
+		//asoocool dblTostr
+		//cbObj 에 셋팅하고 바로 지운다.
+		this.dblTostr = undefined;
+
+		//menuNo 를 세팅하지 않으면 응답을 기다리지 않는 전송이다.
+		this.setQueryCallback(packetId, cbObj);
+
+		//------------------------------------------------------------
+		//	네트웍 타임아웃 셋팅
+		if(this.timeoutSec>0)
+		{
+			var thisObj = this;
+
+			cbObj.timeout = setTimeout(function()
+			{
+				if(thisObj.isShowProgress) AIndicator.hide();
+
+				thisObj.errorData.trName = trName;
+				thisObj.errorData.errCode = 10001;
+				//thisObj.errorData.errMsg = '서버와의 접속이 지연되고 있습니다.';
+				thisObj.errorData.errMsg = '통신 상태가 원활하지 않습니다.(1) : ' + thisObj.errorData.trName + ',' + menuNo + ',' + groupName;
+
+				//콜백 객체 제거
+				thisObj.getQueryCallback(packetId);
+
+				//타임아웃
+				if(afterOutBlockData) afterOutBlockData.call(thisObj, null);
+				//if(listener && listener.afterOutBlockData) listener.afterOutBlockData(null, groupName, thisObj.errorData.trName, thisObj);
+
+				qLen = thisObj.queryListeners.length;
+				for(i=0; i<qLen; i++)
+				{
+					listener = thisObj.queryListeners[i];
+
+					if(listener.afterRecvBufferData) listener.afterRecvBufferData(thisObj);
+					if(listener.afterOutBlockData) listener.afterOutBlockData(null, thisObj);
+				}
+
+
+			}, this.timeoutSec*1000);
+		}
 	}
 	
 	//---------------------------------------------------------

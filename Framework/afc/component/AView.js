@@ -51,7 +51,7 @@ AView.CONTEXT =
     },
 
     //events: ['swipe', 'longtab', 'scroll', 'scrollleft', 'scrollright', 'scrolltop', 'scrollbottom', 'drop', 'dragStart', 'dragEnd' ]
-    events: ['swipe', 'longtab', 'scroll', 'scrollleft', 'scrollright', 'scrolltop', 'scrollbottom' ]
+    events: ['click', 'dblclick', 'swipe', 'longtab', 'scroll', 'scrollleft', 'scrollright', 'scrolltop', 'scrollbottom' ]
 };
 
 AView.NAME = "AView";
@@ -112,6 +112,7 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 			
 			//RESPONSIVE_MODE = 'Mobile';
 		}
+		
 		if(RESPONSIVE_MODE)
 		{
 			var path = AUtil.extractLoc(url,'/');
@@ -130,9 +131,24 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		if(LocalizeManager.isExistFile(url, LocalizeManager.LANGUAGE)) url = resUrl;
 	}
 	
-	afc.loadSync(item, url, function(ret)
+	//turnback 은 실제로 asyncCallback 이 참인 경우(비동기방식)에 사용하는 변수, 즉 비동기인 경우만 사용하는 변수
+	//asyncCallback 변수를 거짓으로 넘기면서 turnback 에 이미 로드된 html 을 넘기면 loadSync 를 호출하지 않고 view 를 생성한다.
+	
+	if(!asyncCallback && turnback) 
 	{
-		if(!ret) return;
+		item.innerHTML = turnback;
+		
+		_loadHelper.call(item, '');
+	}
+	else afc.loadSync(item, url, _loadHelper, null, null, Boolean(asyncCallback));//, new RegExp(searchValue, 'g'), compIdPrefix);
+	
+	function _loadHelper(retHtml)
+	{
+		//마지막으로 로드 성공한 html 문자열 정보를 저장해 둔다.
+		if(retHtml) AView.lastLoadedHtml = retHtml;
+		
+		//retHtml 이 null 인 경우는 ajax 에러이므로 리턴한다.
+		if(retHtml==null) return;
 
 		var viewObj = $(this).children();
 		var viewContext = viewObj[0];
@@ -141,7 +157,8 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		//그래야 자식 컴포넌트들이 자신을 기준으로 배치된다.
 		viewObj.css('position', 'relative');
 
-		var _className = viewObj.attr(afc.ATTR_CLASS);
+		var _className = viewObj.attr(afc.ATTR_CLASS), isAView = (_className=='AView');	//lay 에 매칭된 cls 가 없는 경우는 기본 AView class 이다.
+			
 		if(!_className)
 		{
 			alert(afc.log('There is no className in attribute. url : ' + url));
@@ -150,12 +167,13 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		
 		//-------------------------------------------------------------------------
 		// cls 파일 동적 로딩
-		if(PROJECT_OPTION.build.dynamicInc && _className!='AView') 
+		if(PROJECT_OPTION.build.dynamicInc && !isAView) 
 		{
 			//로컬라이징 사용여부
 			if(PROJECT_OPTION.general.localizing) url = url.replace("/"+LocalizeManager.LANGUAGE+"/","/");
 			//반응형
 			if(PROJECT_OPTION.general.responsiveLay) url = url.replace("/"+RESPONSIVE_MODE+"/","/");
+			
 			afc.loadScript( url.substring(0, url.lastIndexOf(".")) + '.js');
 		}
 		//-------------------------------------------------------------------------		
@@ -163,7 +181,7 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		
 		//-------------------------------------------------------------------------
 		// 컴포넌트 파일 동적 로딩
-		if(PROJECT_OPTION.build.dynamicComp && _className!='AView') 
+		if(PROJECT_OPTION.build.dynamicComp && !isAView) 
 		{
 			var classMap = viewObj.attr('data-class-map');
 			
@@ -208,11 +226,25 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		aview.owner = owner;	//자신을 로드한 주체(AComponent, AContainer)
 		aview.item = this;		//뷰를 감싸고 있는 dom element 값을 item 이란 변수로 저장
 		this.view = aview;		//item 은 view 란 변수로 AView 객체를 저장
-
-		if(owner) viewContext.container = owner.getContainer();
-		if(!eventListener) eventListener = aview;
 		
-		viewContext.rootView = aview;
+		
+		var rootView = aview;
+		
+		if(owner) 
+		{
+			viewContext.container = owner.getContainer();
+			
+			//단독으로 로드된 lay 인 경우 owner 의 루트뷰로 변경해 준다.
+			if(isAView && owner.getRootView) //AContainer 인 경우는 함수가 없다.
+			{
+				rootView = owner.getRootView();
+			}
+		}
+		
+		
+		if(!eventListener) eventListener = rootView;
+		
+		viewContext.rootView = rootView;
 		viewContext.compIdPrefix = afc.makeCompIdPrefix();
 		
 		aview.init(viewContext, eventListener);
@@ -232,15 +264,13 @@ AView.createView = function(item, url, owner, eventListener, skipUpdatePos, skip
 		
 		if(asyncCallback) asyncCallback(aview, turnback);
 		
-	}, null, null, Boolean(asyncCallback));//, new RegExp(searchValue, 'g'), compIdPrefix);
+	}	
 	
 	return aview;
 
 };
 
-
 //--------------------------------------------------------------------------------------------
-
 
 
 AView.prototype.init = function(context, evtListener)
@@ -324,6 +354,12 @@ AView.prototype.init = function(context, evtListener)
 			// 이미 backface0visibility 값이 SpiderGen에서 화면 오픈 할 때 hidden으로 처리되었으므로 일단 제거하고
 			// 추후에 아래의 내용으로 변경할지 고민 필요
 			//if(!afc.isSimulator && !window._afc) this.$ele.css('-webkit-backface-visibility', 'hidden');
+			
+			if(afc.isScrollIndicator) 
+			{
+				this.enableScrollIndicatorX();
+				this.enableScrollIndicatorY();
+			}
 		}
 	}
 	
@@ -605,10 +641,8 @@ AView.prototype.onActiveDone = function(isFirst)
 	var cntr = this.getContainer();
 	if(cntr && cntr.isActiveRecursive) this.callSubActiveEvent('onActiveDone', isFirst);
 	
-	//###########################################################################
-	//차후에 이 부분도 backface-visibility 옵션으로 해결되는지 확인해 보기
-	
-	if(!AContainer.disableIosScroll && afc.isIos && !afc.isHybrid) afc.refreshApp();
+	//IOS 웹 브라우저에서 스크롤이 안되는 버그 수정
+	if(!AContainer.disableIosScroll && afc.isIos && !afc.isHybrid) afc.refreshApp(this.$ele);
 	
 	//뷰가 활성화 될 때 화면을 다시 한번 그려준다.
 	//브라우저의 여러 경우에 따라 화면 렌더링의 버그가 있을 경우 옵션을 설정해 준다.
@@ -629,6 +663,7 @@ AView.prototype.onDeactive = function()
 
 AView.prototype.onDeactiveDone = function() 
 {
+
 	var cntr = this.getContainer();
 	if(cntr && cntr.isActiveRecursive) this.callSubActiveEvent('onDeactiveDone');
 };
@@ -659,7 +694,7 @@ AView.prototype.reuse = function()
 AView.prototype.setScrollArrowX = function()
 {
 	var sa = new ScrollArrow();
-	sa.setArrow('horizental');
+	sa.setArrow('horizontal');
 	sa.apply(this.element);
 };
 
@@ -670,11 +705,48 @@ AView.prototype.setScrollArrowY = function()
 	sa.apply(this.element);
 };
 
+
+AView.prototype.enableScrollIndicatorX = function()
+{
+	this.scrlIndicatorX = new ScrollIndicator();
+	this.scrlIndicatorX.init('horizontal', this.element);
+	
+	var thisObj = this;
+	
+	//scrollIndicator 는 상위 element 에 추가된다.
+	//view 는 scrollArea 가 없기 때문에 스크롤바의 위치를 보정해야 함.
+	this.scrlIndicatorX.resetScrollPos(function()
+	{
+		var value = thisObj.getPos().left;
+		
+		this.setStyle({left: value+'px'});
+		this.setScrollOffset(value);
+	});	
+};
+
+AView.prototype.enableScrollIndicatorY = function()
+{
+	this.scrlIndicatorY = new ScrollIndicator();
+	this.scrlIndicatorY.init('vertical', this.element);
+	
+	var thisObj = this;
+	
+	this.scrlIndicatorY.resetScrollPos(function()
+	{
+		var value = thisObj.getPos().top;
+		
+		this.setStyle({top: value+'px'});
+		this.setScrollOffset(value);
+	});	
+};
+
 AView.prototype.enableScrlManagerX = function()
 {
-	if(this.scrlManagerX) return;
+	if(this.scrlManagerX) return this.scrlManagerX;
 	
 	this.scrlManagerX = new ScrollManager();
+	
+	//animationFrame 이 지원되지 않는 경우만 작동되는 옵션
 	this.scrlManagerX.setOption(
 	{
 		startDelay: 10,
@@ -687,6 +759,8 @@ AView.prototype.enableScrlManagerX = function()
 	
 	this.scrollXImplement();
 	this.aevent._scroll();
+	
+	return this.scrlManagerX;
 };
 
 AView.prototype.enableScrlX = function()
@@ -701,13 +775,15 @@ AView.prototype.disableScrlX = function()
 
 AView.prototype.enableScrlManagerY = function()
 {
-	if(this.scrlManagerY) return;
+	if(this.scrlManagerY) return this.scrlManagerY;
 
 	this.scrlManagerY = new ScrollManager();
 	this.$ele.css({'overflow':'auto', '-webkit-overflow-scrolling': ''});
 	
 	this.scrollYImplement();
 	this.aevent._scroll();
+	
+	return this.scrlManagerY;
 };
 
 AView.prototype.setScrollXComp = function(acomp)
@@ -725,7 +801,7 @@ AView.prototype.scrollXImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		aview.scrlManagerX.initScroll(e.changedTouches[0].clientX);
 	});
@@ -749,7 +825,7 @@ AView.prototype.scrollXImplement = function()
 		if(!isDown) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		var scrlArea = this;
 		aview.scrlManagerX.scrollCheck(e.changedTouches[0].clientX, function(move)
@@ -772,7 +848,7 @@ AView.prototype.scrollYImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		aview.scrlManagerY.initScroll(e.changedTouches[0].clientY);
 	});
@@ -795,7 +871,7 @@ AView.prototype.scrollYImplement = function()
 		if(!isDown) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		var scrlArea = this;
 		aview.scrlManagerY.scrollCheck(e.changedTouches[0].clientY, function(move)
@@ -1027,8 +1103,9 @@ AView.prototype.addComponent = function(acomp, isPrepend, posComp)
 		else this.$ele.append(acomp.element);
 	}
 	
-	var arrange = this.$ele.attr('data-arrange');
-	if(arrange) acomp.$ele.css({'position':'relative', left:'0px', top:'0px', 'float':arrange});
+	//1.0에 있던 사라진 기능
+	//var arrange = this.$ele.attr('data-arrange');
+	//if(arrange) acomp.$ele.css({'position':'relative', left:'0px', top:'0px', 'float':arrange});
 	
 	acomp.setParent(this);
 	
@@ -1300,7 +1377,7 @@ AView.prototype.hide = function()
 	var thisObj = this;
 	setTimeout(function() 
 	{
-		thisObj.onDeactiveDone();
+		if(thisObj.isValid()) thisObj.onDeactiveDone();
 	}, 0);
 };
 
@@ -1365,6 +1442,7 @@ AView.prototype.setQueryData = function(dataArr, keyArr, queryData)
 	{
 		child = children[i];
 		
+		//AView 에서만 사용함
 		//매핑 타입이 child mapping 이면 자식 컴포넌트 자체에 셋팅된 필드키를 적용한다.
 		if(child.mappingType==3) child.updateChildMappingComp(dataArr, queryData);
 		else 
@@ -1507,3 +1585,14 @@ AView.prototype.setTabData = function(data)
 	if(this.item.tab) this.item.tab.data = data;
 };
 
+
+AView.prototype.getItemData = function()
+{
+	if(this.item) return this.item.itemData;
+	else return null;
+};
+
+AView.prototype.setItemData = function(data)
+{
+	if(this.item) this.item.itemData = data;
+};

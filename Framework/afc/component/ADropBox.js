@@ -25,7 +25,7 @@ function ADropBox()
 	this.listPopup = null;
 	
 	this.scrollArea = null;
-	this.isEnableSM = true;
+	this.isEnableSM = false;
 }
 afc.extendsClass(ADropBox, AComponent);
 
@@ -249,7 +249,9 @@ ADropBox.prototype.getSelectedItemData = function(key)
 
 ADropBox.prototype.getSelectedItemText = function()
 {
-    return this.getSelectedItem().text;
+	var selectedItem = this.getSelectedItem();
+	if(selectedItem) return selectedItem.text;
+	else return;
 };
 
 ADropBox.prototype.getItemSize = function()
@@ -266,7 +268,7 @@ ADropBox.prototype.removeAll = function()
 {
 	//$(this.textfield).attr('value', '');
 	//this.textfield.value = '';
-	$(this.textfield).val('');
+	this.clearSelectItem();	//$(this.textfield).val('');
     this.items.length = 0;
 };
 
@@ -318,10 +320,17 @@ ADropBox.prototype.setOpenDirection = function(isDown)
     this.openDir = isDown;
 };
 
-ADropBox.prototype.setScrollManager = function(enable)
+ADropBox.prototype.enableScrollManager = function(enable)
 {
 	this.isEnableSM = enable;
 
+};
+
+ADropBox.prototype.enableScrollIndicator = function()
+{
+	this.scrlIndicator = new ScrollIndicator();
+	
+	this.scrlIndicator.init('vertical', this.scrollArea[0]);
 };
 
 ADropBox.prototype.openBox = function()
@@ -382,7 +391,7 @@ ADropBox.prototype.openBox = function()
 	var boxHeight = Math.min(itemHeight*this.items.length, this.dropBoxH);
 
 	//드랍박스를 상단으로 띄울지 하단으로 띄울지 결정
-	if((pos.top + boxHeight) > $(window).height()) pos.top -= boxHeight;
+	if((pos.top + boxHeight + this.$ele.height()) > $(window).height()) pos.top -= boxHeight;
 	else pos.top += this.$ele.height() - 1;
 
 	//temp code
@@ -411,15 +420,15 @@ ADropBox.prototype.openBox = function()
 
 		thisObj.listPopup = null;
 		
-		if(cntr)
+		setTimeout(function() 
 		{
-			setTimeout(function() 
-			{ 
-				cntr.enable(true); 
+			if(cntr && cntr.isValid()) cntr.enable(true); 
 
-			}, afc.DISABLE_TIME);
-		}
+		}, afc.DISABLE_TIME);
 	});
+	
+	
+	if(afc.isScrollIndicator) this.enableScrollIndicator();
 
 };
 
@@ -454,7 +463,7 @@ ADropBox.prototype.bindData = function(ulObj)
 		
         //var liObjStr = '<li class="'+this.normalClass+'" style="width:' + $(this.element).width() + 'px;"><span style="margin:10px;">'+dataArr[i].text+'</sapn>';
 		
-		var liObjStr = '<li class="'+this.normalClass+'"><span>'+dataArr[i].text+'</sapn>';
+		var liObjStr = '<li class="'+(i==this.selIndex?this.selectClass:this.normalClass)+'"><span>'+dataArr[i].text+'</sapn>';
 		/*  코드와 값을 같이 보여줘야 할경우 셋팅
         if(this.showCode)
         {
@@ -515,7 +524,7 @@ ADropBox.prototype.scrollYImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		thisObj.scrlManagerY.initScroll(e.changedTouches[0].clientY);
 	});
 	
@@ -537,7 +546,7 @@ ADropBox.prototype.scrollYImplement = function()
 		if(!isDown) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		var scrlArea = this;
 		thisObj.scrlManagerY.scrollCheck(e.changedTouches[0].clientY, function(move)

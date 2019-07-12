@@ -19,7 +19,8 @@ function DDManager(acomp)
 	this.option = 
 	{
 		isDropPropagation: false,
-		direction: DDManager.DIR_BOTH 
+		direction: DDManager.DIR_BOTH,
+		autoCenter: false
 	};
 	
 	this.dragBound = null; //{left:0, top:0, right:0, bottom:0};
@@ -68,18 +69,24 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
     
     if(this.isDraggable)
     {
-		var boxObj, halfX, halfY, dragSX, dragSY, isStart,
+		var boxObj, halfX = 0, halfY = 0, dragSX, dragSY, isStart,
 			isDown = false;
 		
 		function _dragSet()
 		{
 			isDown = true;
 		
-			dragEle.css('z-index', 99999);
+			//임의로 바꾸지 않는다. 필요하면 호출하는 곳에서 바꿈.
+			//dragEle.css('z-index', 99999);
 			
 			boxObj = dragEle[0].getBoundingClientRect();
-			halfX = parseInt(boxObj.width/2, 10);
-			halfY = parseInt(boxObj.height/2, 10);
+			
+			if(thisObj.option.autoCenter)
+			{
+				halfX = parseInt(boxObj.width/2, 10);
+				halfY = parseInt(boxObj.height/2, 10);
+			}
+			
 			dragSX = boxObj.left + halfX - thisObj.offsetX;
 			dragSY = boxObj.top + halfY - thisObj.offsetY;
 			isStart = false;
@@ -114,11 +121,28 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
 			
 			if(thisObj.dragBound)
 			{
-				if(touchX<thisObj.dragBound.left) touchX = thisObj.dragBound.left;
-				else if(touchX>thisObj.dragBound.right) touchX = thisObj.dragBound.right;
+				if(touchX<thisObj.dragBound.left) 
+				{
+					touchX = thisObj.dragBound.left;
+					if(thisObj.dragListener && thisObj.dragListener.onDragScrollLeft) thisObj.dragListener.onDragScrollLeft(-1);
+				}
+				else if(touchX>thisObj.dragBound.right) 
+				{
+					touchX = thisObj.dragBound.right;
+					if(thisObj.dragListener && thisObj.dragListener.onDragScrollLeft) thisObj.dragListener.onDragScrollLeft(1);
+				}
 				
-				if(touchY<thisObj.dragBound.top) touchY = thisObj.dragBound.top;
-				else if(touchY>thisObj.dragBound.bottom) touchY = thisObj.dragBound.bottom;
+				if(touchY<thisObj.dragBound.top) 
+				{
+					touchY = thisObj.dragBound.top;
+					if(thisObj.dragListener && thisObj.dragListener.onDragScrollTop) thisObj.dragListener.onDragScrollTop(-1);
+				}
+				else if(touchY>thisObj.dragBound.bottom) 
+				{
+					touchY = thisObj.dragBound.bottom;
+					if(thisObj.dragListener && thisObj.dragListener.onDragScrollTop) thisObj.dragListener.onDragScrollTop(1);
+				}
+				
 			}
 			
 			switch(thisObj.option.direction)
@@ -132,7 +156,7 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
 			{
 				isStart = true;
 				
-				if(thisObj.dragListener) thisObj.dragListener.onDragStart(dragComp, e);
+				if(thisObj.dragListener && thisObj.dragListener.onDragStart) thisObj.dragListener.onDragStart(dragComp, e);
 			}
 		};
 
@@ -164,6 +188,10 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
 				top: (touchs.clientY-halfY)+'px' 
 			});
 			*/
+			
+			if(thisObj.dragListener && thisObj.dragListener.onDragEnd) thisObj.dragListener.onDragEnd(dragComp, e);
+			
+			var dropComp = null;
 
 			$( $('.'+DDManager.DROP_CLASS+':visible').get().reverse() ).each(function()
 			{
@@ -179,27 +207,26 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
 					var evt = 
 					{
 						'dragComp': dragComp, 
-						'clientX': (touchX-dropBox.left-halfX),
-						'clientY': (touchY-dropBox.top-halfY)
+						//'clientX': (touchX-dropBox.left-halfX),
+						//'clientY': (touchY-dropBox.top-halfY)
+						'touchX': touchX,
+						'touchY': touchY
 					};
 					
-					var dropComp = this.acomp;
+					dropComp = this.acomp;
 					if(!dropComp) dropComp = this.view;	//listview item
 					
-					if(dropComp.ddManager.dropListener) 
+					if(dropComp.ddManager.dropListener && dropComp.ddManager.dropListener.onCompDrop) 
 					{
-						setTimeout(function()
-						{
-							dropComp.ddManager.dropListener.onCompDrop(dropComp, evt);
-						}, 1);
-						
+						dropComp.ddManager.dropListener.onCompDrop(dropComp, evt);
 					}
 					
 					if(!dropComp.ddManager.option.isDropPropagation) return false;
 				}
 			});
 			
-			if(thisObj.dragListener) thisObj.dragListener.onDragEnd(dragComp, e);
+			//아무곳에도 드랍되지 않은 경우
+			if(!dropComp && thisObj.dragListener && thisObj.dragListener.onDropFail) thisObj.dragListener.onDropFail(dragComp, e);
 		};
 		
 		this.touchCancel = function(e) 
@@ -236,6 +263,11 @@ DDManager.prototype.enableDrag = function(isDraggable, listener)
 			'-webkit-transition-delay': ''
 		});
 	}
+};
+
+DDManager.prototype.setDropListener = function(listener)
+{
+	this.dropListener = listener;
 };
 
 DDManager.prototype.enableDrop = function(isDroppable, listener)

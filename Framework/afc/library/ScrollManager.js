@@ -65,6 +65,8 @@ ScrollManager.prototype.setDisableManager = function(manager)
 	this.disableManager = manager;
 };
 */
+
+//자신이 스크롤될 때 움직이지 말아야할 스크롤 매니저 지정
 ScrollManager.prototype.addDisableManager = function(manager)
 {
 	if(!this.disableManagers) this.disableManagers = [];
@@ -107,7 +109,9 @@ ScrollManager.prototype.stopScrollTimer = function()
 {
 	//touchmove 인 경우는 계속해서 updateScroll 이 발생할 수 있으므로 
 	//DisableManager 를 초기화 하지 않는다.
-	if(this.scrollState==2) return;
+	
+	//auto scroll 상태인 경우만 실행되도록 한다.
+	if(this.scrollState!=3) return;
 
 	this.isScrollStop = true;
 
@@ -133,11 +137,13 @@ ScrollManager.prototype.stopScrollTimer = function()
 
 ScrollManager.prototype.initScroll = function(pos)
 {
-	this.scrollState = 1;
-	
 	//if(!this.scrollEnable) return;
 
+	//stopScrollTimer 를 호출한 후...
 	this.stopScrollTimer();
+	
+	//상태값을 셋팅해 줘야 타이머가 제거됨.
+	this.scrollState = 1;
 	
 	this.oldTime = this.startTime = Date.now();
 	

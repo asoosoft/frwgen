@@ -141,6 +141,9 @@ ATextField.prototype.getPadding = function()
 
 ATextField.prototype.enable = function(isEnable)
 {
+	if(isEnable) this.removeAttr('disabled');
+	else this.setAttr('disabled', 'true');
+
 	if(isEnable)
 	{
 		var thisObj = this;

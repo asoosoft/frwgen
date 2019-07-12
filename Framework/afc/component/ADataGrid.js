@@ -16,8 +16,6 @@ function ADataGrid()
 {
 	AView.call(this);
 	
-	
-	
 	//-----------------------------------------------------------	
 	//	data object format
 	//	object = { text: 'abc', type:'check', select:true }
@@ -38,6 +36,9 @@ function ADataGrid()
 	
 	this.selObjs = [];
 	
+	//리얼 관련
+	this.realMap = null;
+	this.realField = null;
 }
 afc.extendsClass(ADataGrid, AView);
 
@@ -83,9 +84,14 @@ ADataGrid.prototype.init = function(context, evtListener)
 	this.scrollBarV.addEventListener('scroll', this, 'onScrollY');
 	this.scrollBarH.addEventListener('scroll', this, 'onScrollX');
 	
-	if(this.pivotGrid) this.pivotGrid.addEventListener('select', this, 'onGridSelect');
+	if(this.pivotGrid) 
+	{
+		this.pivotGrid.addEventListener('select', this, 'onGridSelect');
+		this.pivotGrid.addEventListener('dblclick', this, 'onGridDblclick');
+	}
 	
 	this.grid.addEventListener('select', this, 'onGridSelect');
+	this.grid.addEventListener('dblclick', this, 'onGridDblclick');
 	
 	this.grid.scrollArea.css('overflow-y', 'visible');	//or hidden
 	
@@ -94,15 +100,16 @@ ADataGrid.prototype.init = function(context, evtListener)
 	//scrollPadding : 스크롤 영역에서 제외할 상단 영역.. 보통 그리드에서 헤더
 	this.scrollBarV.setScrollArea(this.grid.scrollArea.height(), this.grid.hRowTmplHeight, this.grid.rowTmplHeight, true);	//scrlAreaHeight, scrollPadding, scrollGap
 	
-	//ADataGrid 에 한해서 모바일인 경우 pc 용 스크롤 바가 보이도록
 	if(afc.isMobile)
 	{
+		//ADataGrid 에 한해서 모바일인 경우 pc 용 스크롤 바가 보이도록
 		//this.$ele.addClass('_global_scroll_style_');
 		
 		//모바일을 위한 자체 스크롤 활성화
 		this.enableScrlManagerY();
 		
-		if(this.pivotGrid) this.enableScrlManagerX();
+		//if(this.pivotGrid) this.enableScrlManagerX();
+		this.enableScrlManagerX();
 	}
 };
 
@@ -202,8 +209,27 @@ ADataGrid.prototype.removeSelectObj = function(selObj)
 	return inx;
 };
 
-
 ADataGrid.prototype.onGridSelect = function(acomp, info, e)
+{
+	var evtObj = this.gridClickManage(acomp, info, e);
+
+	if(this.aevent.selectBind)
+	{
+		if(evtObj) this.reportEvent('select', evtObj, e);
+	}
+};
+
+ADataGrid.prototype.onGridDblclick = function(acomp, info, e)
+{
+	if(this.aevent.dblclickBind)
+	{
+		var evtObj = this.gridClickManage(acomp, info, e);
+		
+		if(evtObj) this.reportEvent('dblclick', evtObj, e);
+	}
+};
+
+ADataGrid.prototype.gridClickManage = function(acomp, info, e, isDblClick)
 {
 	var cell = info[0], evtObj = {}, addVal = 0;
 	
@@ -216,11 +242,13 @@ ADataGrid.prototype.onGridSelect = function(acomp, info, e)
 		rowInx = this.dataInx + pos[0],
 		colInx = addVal + pos[1],
 		parentArr = this.dataArr2[rowInx];
-	
-	if(e.target.type == 'button')
+
+	//cell 안에 button 이나 input 태그가 있는 경우 클릭 처리를 하지 않는다.
+	//하단에 renderData 가 호출될 경우 button 등에 셋팅했던 이벤트가 리셋된다.
+	if(e.target.tagName == 'BUTTON' || e.target.tagName == 'INPUT')
 	{
 		acomp.deselectCell(info);
-		return;
+		return null;
 	}
 	
 	//헤더를 클릭한 경우
@@ -321,12 +349,10 @@ ADataGrid.prototype.onGridSelect = function(acomp, info, e)
 		this.renderData();
 	}
 	
-	if(this.aevent.selectBind)
-		this.reportEvent('select', evtObj, e);
-	
+	return evtObj;
 };
 
-ADataGrid.prototype.onScrollX = function(acomp, info)
+ADataGrid.prototype.onScrollX = function(acomp, info, e)
 {
 	this.scrlView.element.scrollLeft = info;
 	
@@ -335,7 +361,7 @@ ADataGrid.prototype.onScrollX = function(acomp, info)
 	this.renderData();
 };
 
-ADataGrid.prototype.onScrollY = function(acomp, info)
+ADataGrid.prototype.onScrollY = function(acomp, info, e)
 {
 	if(this.scrollBarV.isScrollBottom()) 
 	{
@@ -386,17 +412,19 @@ ADataGrid.prototype.renderData = function()
 {
 	var end = this.dataInx + this.renderRowCnt, 
 		i = this.dataInx, j = 0;
+		
+	if(end>this.dataArr2.length) end = this.dataArr2.length;
 
 	if(this.pivotGrid) this.pivotGrid.clearSelected();
 
 	this.grid.clearSelected();
 
 	var dataOffset = this.pivotGrid ? this.pivotGrid.columnCount : 0;
-
+	
 	for(; i<end; i++)
 	{
 		if(this.pivotGrid) this.pivotGrid.setRowByObj(this, j, this.dataArr2[i]);
-
+		
 		this.grid.setRowByObj(this, j++, this.dataArr2[i], this.startCol, this.endCol, dataOffset);
 	}
 };
@@ -408,12 +436,16 @@ ADataGrid.prototype.setDelegator = function(delegator)
 
 ADataGrid.prototype.buttonClick = function(acomp, info, e)
 {
-	if(this.delegator && this.delegator.buttonClick) this.delegator.buttonClick(info, e);
+	if(this.delegator) 
+	{
+		if(typeof(this.delegator)=='function') this.delegator.call(this, info, e);
+		else if(this.delegator.buttonClick) this.delegator.buttonClick(info, e);
+	}
 };
 
 ADataGrid.prototype.enableScrlManagerY = function()
 {
-	if(this.scrlManagerY) return;
+	if(this.scrlManagerY) return this.scrlManagerY;
 
 	var thisObj = this;
 	
@@ -421,19 +453,22 @@ ADataGrid.prototype.enableScrlManagerY = function()
 	this.scrlManagerY.setOption({moveDelay: 5});
 	
 	this.scrollImplementY();
+	
+	return this.scrlManagerY;
 };
 
 ADataGrid.prototype.enableScrlManagerX = function()
 {
-	if(this.scrlManagerX) return;
+	if(this.scrlManagerX) return this.scrlManagerX;
 
 	var thisObj = this;
 	
 	this.scrlManagerX = new ScrollManager();
 	this.scrlManagerX.setOption({moveDelay: 10});
 	
-	
 	this.scrollImplementX();
+	
+	return this.scrlManagerX;
 };
 
 
@@ -453,7 +488,7 @@ ADataGrid.prototype.scrollImplementY = function()
 		thisObj.isScrollingY = false;
 		thisObj.isScrollingX = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManagerY.initScroll(e.changedTouches[0].clientY);
 		
@@ -475,7 +510,7 @@ ADataGrid.prototype.scrollImplementY = function()
 		if(!isDown || thisObj.isScrollingX) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManagerY.scrollCheck(e.changedTouches[0].clientY, _scrlHelper);
 	});
@@ -525,7 +560,7 @@ ADataGrid.prototype.scrollImplementX = function()
 		thisObj.isScrollingX = false;
 		thisObj.isScrollingY = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManagerX.initScroll(e.changedTouches[0].clientX);
 		
@@ -547,7 +582,7 @@ ADataGrid.prototype.scrollImplementX = function()
 		if(!isDown || thisObj.isScrollingY) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManagerX.scrollCheck(e.changedTouches[0].clientX, _scrlHelper);
 	});
@@ -595,7 +630,7 @@ ADataGrid.prototype.setGridData = function(dataArr2, noUpdate)
 	this.maskGridData(dataArr2);
 	
 	// type이 sum인 경우 위의 항목을 다 더한다.
-	this.sum();
+	//this.sum();
 	
 	if(!noUpdate) this.updateDataGrid();
 };
@@ -665,6 +700,7 @@ ADataGrid.prototype.maskGridData = function(gridData)
 	}
 };
 
+/*
 ADataGrid.prototype.sum = function()
 {
 	var rowData, sumRowData, sumColDataArr = [];
@@ -694,30 +730,57 @@ ADataGrid.prototype.sum = function()
 		}
 	}
 };
+*/
 
-ADataGrid.prototype.insertRowData = function(rowInx, rowData, noUpdate)
+ADataGrid.prototype.getMetaData = function(row)
+{
+	if(typeof(row)=="number") row = this.dataArr2[row];
+	
+	if(row) return row._data;
+	else return null;
+};
+
+ADataGrid.prototype.setMetaData = function(row, metaData)
+{
+	if(typeof(row)=="number") row = this.dataArr2[row];
+	
+	if(row) row._data = metaData;
+};
+
+
+ADataGrid.prototype.insertRowData = function(rowInx, rowData, metaData, noUpdate)
 {
 	this.maskRowData(rowData);
-	
 	this.dataArr2.splice(rowInx, 0, rowData);
+	
+	if(metaData) rowData._data = metaData;
 
 	// type이 sum인 경우 위의 항목을 다 더한다.
-	this.sum();
+	//this.sum();
 	
 	if(!noUpdate) this.updateDataGrid();
 };
 
-ADataGrid.prototype.addRowData = function(rowData, noUpdate)
+ADataGrid.prototype.addRowData = function(rowData, metaData, noUpdate)
 {
-	this.insertRowData(this.dataArr2.length, rowData, noUpdate);
+	this.maskRowData(rowData);
+	this.dataArr2.push(rowData);
+	
+	if(metaData) rowData._data = metaData;
+
+	// type이 sum인 경우 위의 항목을 다 더한다.
+	//this.sum();
+	
+	if(!noUpdate) this.updateDataGrid();
 };
 
 //특정 row 의 전체 데이터를 덮어 쓴다.
-ADataGrid.prototype.setRowData = function(rowInx, rowData, noUpdate)
+ADataGrid.prototype.setRowData = function(rowInx, rowData, metaData, noUpdate)
 {
 	this.maskRowData(rowData);
-	
 	this.dataArr2[rowInx] = rowData;
+	
+	if(metaData) rowData._data = metaData;
 	
 	if(!noUpdate) this.updateDataGrid();
 };
@@ -736,6 +799,8 @@ ADataGrid.prototype.mergeRowData = function(rowInx, rowData, noUpdate)
 
 ADataGrid.prototype.removeRowData = function(rowInx, noUpdate)
 {
+	if(typeof(rowInx)!="number") rowInx = this.dataArr2.indexOf(rowInx);
+
 	this.dataArr2.splice(rowInx, 1);
 	
 	if(!noUpdate) this.updateDataGrid();
@@ -914,99 +979,176 @@ ADataGrid.prototype.getMappingCount = function()
 	return mappingArr;
 };
 
+ADataGrid.prototype.setRealMap = function(realField)
+{
+	this.realField = realField;
+	// this.realMap = null; 일 경우 addPattern 이 호출되기 전에 리얼이 수신되는 경우도 있다.
+	this.realMap = {};
+};
+
+ADataGrid.prototype.getRealKey = function(data)
+{
+	return data[this.realField];
+};
+
 ADataGrid.prototype.setQueryData = function(dataArr, keyArr, queryData)
 {
 	if(!keyArr) return;
 	
-	//	object = { text: 'abc', type:'check', select:true }
-	
-	/*	
-	this.$rowTmpl.find('td').each(function()
+	if(queryData.isReal) 
 	{
-		if(this.dm) this.dm.setQueryData(data, keyArr, queryData);
-	});	
-	*/
+		var realType = queryData.aquery.getRealType();
+		
+		this.doRealPattern(dataArr, keyArr, queryData, realType);
+	}
+	else this.doAddPattern(dataArr, keyArr, queryData);
+};
+
+ADataGrid.prototype.doAddPattern = function(dataArr, keyArr, queryData)
+{
+	var i, j, data, arr, keyVal;
 	
-	var i, j, rowData, arr, keyVal;
+	//조회하는 경우 기존의 맵 정보를 지운다.
+	if(this.realField!=null) this.realMap = {};
 	
 	for(i=0; i<dataArr.length; i++)
 	{
-		rowData = dataArr[i];
-		
+		data = dataArr[i];
 		arr = new Array(keyArr.length);
 
 		for(j=0; j<keyArr.length; j++)
 		{
 			keyVal = keyArr[j];
 
-			if(keyVal) arr[j] = { text: rowData[keyVal] };
+			if(keyVal) arr[j] = { text: data[keyVal] };
 		}
 		
-		this.addRowData(arr, true);
+		ADataMask.setQueryData(data, keyArr, queryData);
+		
+		this.addRowData(arr, data.row_data, true);
+		
+		//리얼맵이 활성화 되어 있으면 조회 시점에 리얼맵을 만든다.
+		if(this.realField!=null) 
+		{
+			this.realMap[this.getRealKey(data)] = arr;
+		}
 	}
 	
 	this.updateDataGrid();
 };
 
+ADataGrid.prototype.doRealPattern = function(dataArr, keyArr, queryData, realType)
+{
+	var data, keyVal, arr;
+	
+	data = dataArr[0];
 
+	//update
+	if(realType==0)
+	{
+		arr = this.realMap[this.getRealKey(data)];
+		
+		if(!arr) return;
+		
+		var cellData;
+		for(var i=0; i<keyArr.length; i++)
+		{
+			keyVal = keyArr[i];
+
+			if(keyVal) 
+			{
+				arr[i].text = data[keyVal];
+			}
+		}
+		
+		ADataMask.setQueryData(data, keyArr, queryData);
+		
+		this.maskRowData(arr);
+		this.updateDataGrid();
+	}
+	
+	else if(realType==2)
+	{
+		var realKey = this.getRealKey(data);
+		
+		arr = this.realMap[realKey];
+		
+		if(!arr) return;
+		
+		this.removeRowData(arr);
+		
+		delete this.realMap[realKey];
+	}
+	
+	//insert
+	else
+	{
+		arr = new Array(keyArr.length);
+		for(var j=0; j<keyArr.length; j++)
+		{
+			keyVal = keyArr[j];
+			if(keyVal) arr[j] = { text: data[keyVal] };
+		}
+		
+		ADataMask.setQueryData(data, keyArr, queryData);
+		
+		//prepend
+		if(realType==-1) this.insertRowData(0, arr, data.row_data);
+		//append
+		else if(realType==1) this.addRowData(arr, data.row_data);
+		
+		//리얼맵이 활성화 되어 있으면 추가 시점에 리얼맵을 셋팅해 준다.
+		if(this.realField!=null) 
+		{
+			this.realMap[this.getRealKey(data)] = arr;
+		}
+	}
+	
+};
 
 //------------------------------------------------------------------------------
 
 
 ADataGrid.NAME = "ADataGrid";
 
+//scrollbar span 에 \n 이나 스페이스가 있어야 세로 스크롤바가 정상 작동한다.
+//그래야 줄 바꿈이 되는 듯.
 ADataGrid.CONTEXT = 
 {
-    tag: '<div class="ADataGrid-Style" data-base="ADataGrid" data-class="ADataGrid">\
-        <div class="AView-Style" data-base="AView" data-class="AView" data-sgap-height="1" data-sgap-width="1" data-stretch-height="true" data-stretch-width="true" style="width: calc((100% - 0px) - 15px); height: calc((100% - 0px) - 15px); left: 0px; top: 0px; overflow: hidden;">\
-	<div data-base="AGrid" data-class="AGrid" data-flag="0001" data-selectable="true" data-clear-rowtmpl="true" class="AGrid-Style" style="width: 200%; height: 100%; left: 0px; top: 0px;" data-fullrow-select="true">\
+    tag: '<div class="ADataGrid-Style" data-base="ADataGrid" data-class="ADataGrid" data-flag="0100">\
+        <div class="AView-Style" data-base="AView" data-class="AView" data-sgap-height="1" data-sgap-width="1" data-stretch-height="true" data-stretch-width="true"\
+		style="width: calc(100% - ' + afc.scrlWidth + 'px); height: calc(100% - ' + afc.scrlWidth + 'px); left: 0px; top: 0px; overflow: hidden; z-index: 0;">\
+	<div data-base="AGrid" data-class="AGrid" data-selectable="true" data-clear-rowtmpl="true" class="AGrid-Style"\
+	style="width: 200%; height: 100%; left: 0px; top: 0px;" data-fullrow-select="true">\
 		<table class="grid-header-table" align="center">\
 		<colgroup><col><col><col><col><col><col></colgroup>\
-		<thead align="center" class="head-prop" style="display: none;">\
+		<thead align="center" class="head-prop">\
 			<tr height="22px">\
-			<td style="border: 1px solid rgb(194, 194, 194);">col1</td>\
-			<td style="border: 1px solid rgb(194, 194, 194);">col2</td>\
-			<td style="border: 1px solid rgb(194, 194, 194);">col3</td>\
-			<td style="border: 1px solid rgb(194, 194, 194);">col4</td>\
-			<td style="border: 1px solid rgb(194, 194, 194);">col5</td>\
-			<td style="border: 1px solid rgb(194, 194, 194);">col6</td>\
+			<td>col1</td><td>col2</td><td>col3</td><td>col4</td><td>col5</td><td>col6</td>\
 			</tr>\
 		</thead>\
 	</table>\
 	<div class="grid-scroll-area">\
-	<table class="grid-body-table" align="center">\
-	<colgroup><col><col><col><col><col><col></colgroup>\
-	<thead align="center" class="head-prop" style="">\
-	<tr height="22px">\
-	<td style="border: 1px solid rgb(194, 194, 194);">col1</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">col2</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">col3</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">col4</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">col5</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">col6</td>\
-	</tr>\
-	</thead>\
-	<tbody align="center" class="body-prop">\
-	<tr height="22px">\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,1</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,2</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,3</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,4</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,5</td>\
-	<td style="border: 1px solid rgb(194, 194, 194);">data 1,6</td>\
-	</tr>\
-	</tbody>\
-	</table>\
+		<table class="grid-body-table" align="center">\
+		<colgroup><col><col><col><col><col><col></colgroup>\
+		<thead align="center" class="head-prop">\
+		<tr height="22px">\
+			<td>col1</td><td>col2</td><td>col3</td><td>col4</td><td>col5</td><td>col6</td>\
+		</tr>\
+		</thead>\
+		<tbody align="center" class="body-prop">\
+		<tr height="22px">\
+			<td >data 1,1</td><td >data 1,2</td><td >data 1,3</td><td >data 1,4</td><td >data 1,5</td><td >data 1,6</td>\
+		</tr>\
+		</tbody>\
+		</table>\
 	</div></div></div>\
-<div class="AScrollBar-Style" data-base="AScrollBar" data-class="AScrollBar" data-scroll-type="" data-sgap-height="1" data-stretch-height="true" style="width: 14px; height: calc(100% - 15px); overflow-y: scroll; position: absolute; right: 0px; top: 0px; overflow-x: hidden;">\
-                                                            <span style="width: 100%; height: 0px;"></span>\
-                                                            <span style="width: 100%; height: 0px;"></span>\
-                                                        </div>\
-                                                        <div class="AScrollBar-Style" data-base="AScrollBar" data-class="AScrollBar" data-scroll-type="hori" data-sgap-width="1" data-stretch-width="true" style="height: 14px; overflow-x: scroll; width: calc(100% - 15px); position: absolute; left: 0px; bottom: 0px; overflow-y: hidden;">\
-                                                            <span style="width: 830px; height: 100%;"></span>\
-                                                            <span style="width: 830px; height: 100%;"></span>\
-                                                        </div>\
-                                                    </div>',
+	<div class="AScrollBar-Style" data-base="AScrollBar" data-class="AScrollBar" data-scroll-type="vert" data-sgap-height="1" data-stretch-height="true"\
+		style="width: ' + afc.scrlWidth + 'px; height: calc(100% - ' + afc.scrlWidth + 'px); overflow-y: scroll; position: absolute; right: 0px; top: 0px; overflow-x: hidden;">\
+		<span style="width: 100%; height: 0px;"></span>\n<span style="width: 100%; height: 0px;"></span></div>\
+	<div class="AScrollBar-Style" data-base="AScrollBar" data-class="AScrollBar" data-scroll-type="hori" data-sgap-width="1" data-stretch-width="true"\
+		style="height: ' + afc.scrlWidth + 'px; overflow-x: scroll; width: calc(100% - ' + afc.scrlWidth + 'px); position: absolute; left: 0px; bottom: 0px; overflow-y: hidden;">\
+		<span style="width: 830px; height: 100%;"></span>\n<span style="width: 830px; height: 100%;"></span></div></div>',
 
     defStyle:
     {

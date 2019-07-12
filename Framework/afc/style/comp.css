@@ -255,7 +255,7 @@
 {
 	position: absolute;
 	box-sizing: border-box;
-	overflow: auto;
+	overflow: visible;
 }
 
 .AGrid-Style td
@@ -279,7 +279,8 @@
 
 .grid-body-table
 {
-	width: 100%; 
+	width: 100%;
+	box-sizing: border-box;
 	border-collapse: collapse; 
 	table-layout: fixed;
 }
@@ -407,7 +408,7 @@
 	border: 0px solid;  	
 }
 
-.AScrollBar-Style span
+.AScrollBar-Style > span
 {
 	display: inline-block;
 }
@@ -602,7 +603,12 @@
 .listview-row
 {
 	position: relative;
-	height: 60px;	/*item-height 값을 지우더라도 최소한의 공간을 보여주기 위해 필요*/
+	/*height: 60px;*/	/*item-height 값을 지우더라도 최소한의 공간을 보여주기 위해 필요*/
+}
+
+.listview-dev
+{
+	overflow: auto;
 }
 
 /*------------------------------  -----------------------------------------*/
@@ -761,12 +767,18 @@
 	position: absolute;
 	box-sizing: border-box;
 	border: 0px solid;
-	overflow: visible;
+	/*스크롤 기능을 끄고 커스텀 스크롤을 사용하기 위해, preventDefault 를 사용하면 다른 스크롤이 발생하지 않는다.*/
+	overflow: hidden;
+	
 	outline: none;
 }
 
 .ASlideView-Style::-webkit-scrollbar
 {
 	display: none;
-} 
+}
 
+.hide-scrlbar::-webkit-scrollbar
+{
+	display: none;
+}

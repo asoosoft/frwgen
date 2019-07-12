@@ -27,7 +27,7 @@ AScrollBar.CONTEXT =
 
     defStyle: 
     {
-    	width:'15px', height:'200px' 
+    	width: afc.scrlWidth+'px', height:'200px' 
     },
    
     events: ['scroll']

@@ -95,6 +95,8 @@ AIndicator.prototype.createSpan = function()
 
 AIndicator.prototype.show = function()
 {
+	AIndicator.isShow = true;
+
 	if(!afc.isSimulator && window.cordova) window.cordova.exec( null , null, "AppPlugin" , "progress", [AppManager.PROGRESS_SHOW]);
 	else 
 	{
@@ -114,6 +116,8 @@ AIndicator.prototype.show = function()
 
 AIndicator.prototype.hide = function()
 {
+	AIndicator.isShow = false;
+	
 	if(!afc.isSimulator && window.cordova) window.cordova.exec( null , null, "AppPlugin" , "progress", [AppManager.PROGRESS_HIDE]);
 	else
 	{

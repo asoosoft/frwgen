@@ -1,4 +1,4 @@
-# frwgen
+# frwgen of SpiderGen 2.4.0
 
 frwgen 은 SpiderGen 에서 사용하는 기본 프레임웍 소스입니다.
 

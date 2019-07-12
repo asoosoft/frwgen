@@ -37,6 +37,16 @@ ASelectBox.prototype.insertItem = function(text, value, data, index)
 	opt.data = data;
 };
 
+ASelectBox.prototype.selectItem = function(index) 
+{ 
+	this.element.selectedIndex = index; 
+};
+
+ASelectBox.prototype.getItem = function(index) 
+{ 
+	return this.element.options[index]; 
+};
+
 ASelectBox.prototype.addItem = function(text, value, data)
 {
 	this.insertItem(text, value, data);
@@ -52,84 +62,45 @@ ASelectBox.prototype.removeAll = function()
 	$(this.element).children().remove();	
 };
 
-ASelectBox.prototype.setItemData = function(index, data)
-{
-	this.element.options[index].data = data;
-};
+ASelectBox.prototype.setItemText = function(index, text) 	{ this.element.options[index].text = text; };
+ASelectBox.prototype.setItemData = function(index, data)	{ this.element.options[index].data = data; };
+ASelectBox.prototype.setItemValue = function(index, value)	{ this.element.options[index].value = value; };
 
-ASelectBox.prototype.setItemValue = function(index, value)
-{
-	this.element.options[index].value = value;
-};
+ASelectBox.prototype.getItemText = function(index)	{ return this.element.options[index].text; };
+ASelectBox.prototype.getItemData = function(index)	{ return this.element.options[index].data; };
+ASelectBox.prototype.getItemValue = function(index)	{ return this.element.options[index].value; };
 
-ASelectBox.prototype.getItemData = function(index)
-{
-	return this.element.options[index].data;
-};
+//----------------------------------------------------------------------------------------------------------------------
 
-ASelectBox.prototype.getItemValue = function(index)
-{
-	return this.element.options[index].value;
-};
+ASelectBox.prototype.getSelectedIndex = function()		{ return this.element.selectedIndex; };
+ASelectBox.prototype.getSelectedItem = function()		{ return this.getItem(this.element.selectedIndex); };
+ASelectBox.prototype.getSelectedItemText = function()	{ return this.getItemText(this.element.selectedIndex); };
+ASelectBox.prototype.getSelectedItemData = function()	{ return this.getItemData(this.element.selectedIndex); };
+ASelectBox.prototype.getSelectedItemValue = function()	{ return this.getItemValue(this.element.selectedIndex); };
 
-ASelectBox.prototype.getItem = function(index)
-{
-	return this.element.options[index];
-};
+ASelectBox.prototype.indexOfText = function(text)	{ return this.indexOf('text', text); };
+ASelectBox.prototype.indexOfValue = function(value)	{ return this.indexOf('value', value); };
+ASelectBox.prototype.indexOfData = function(data)	{ return this.indexOf('data', data); };
 
-ASelectBox.prototype.selectItem = function(index)
-{
-	this.element.selectedIndex = index;
-};
+ASelectBox.prototype.selectItemByText = function(text) { this.selectItem(this.indexOfText(text)); };
+ASelectBox.prototype.selectItemByData = function(data) { this.selectItem(this.indexOfData(data)); };
+ASelectBox.prototype.selectItemByValue = function(value) { this.selectItem(this.indexOfValue(value)); };
 
-ASelectBox.prototype.getSelectedIndex = function()
-{
-	return this.element.selectedIndex;
-};
+ASelectBox.prototype.removeItemByText = function(text) { this.removeItem(this.indexOfText(text)); };
+ASelectBox.prototype.removeItemByData = function(data) { this.removeItem(this.indexOfData(data)); };
+ASelectBox.prototype.removeItemByValue = function(value) { this.removeItem(this.indexOfValue(value)); };
 
-ASelectBox.prototype.getSelectedItem = function()
+//key is 'text', 'value', 'data'
+ASelectBox.prototype.indexOf = function(key, value)
 {
-	return this.getItem(this.element.selectedIndex);
-};
-
-ASelectBox.prototype.getSelectedItemData = function()
-{
-	return this.getItemData(this.element.selectedIndex);
-};
-
-ASelectBox.prototype.getSelectedItemValue = function()
-{
-	return this.getItemValue(this.element.selectedIndex);
-};
-
-ASelectBox.prototype.indexOfValue = function(value)
-{
-	for(var i=0; i<this.element.options.length; i++)
+	var options = this.element.options;
+	
+	for(var i=0; i<options.length; i++)
 	{
-		if(this.element.options[i].value==value) return i;
+		if(options[i][key]==value) return i;
 	}
 	
 	return -1;
-};
-
-ASelectBox.prototype.indexOfData = function(data)
-{
-	for(var i=0; i<this.element.options.length; i++)
-	{
-		if(this.element.options[i].data==data) return i;
-	}
-	
-	return -1;
-};
-
-ASelectBox.prototype.selectItemByData = function(data)
-{
-	this.selectItem(this.indexOfData(data));
-};
-
-ASelectBox.prototype.selectItemByValue = function(value)
-{
-	this.selectItem(this.indexOfValue(value));
 };
 
 

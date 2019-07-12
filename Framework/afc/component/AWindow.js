@@ -130,7 +130,8 @@ AWindow.getTopWindow = function()
 	return AWindow.topWindow;
 };
 
-AWindow.updateTopWindow = function()
+//close 나 hide 가 호출되면 z-index 를 0 으로 셋팅한 후 updateTopWindow 가 호출된다.
+AWindow.updateTopWindow = function(closeCntr)
 {
 	var toTopWnd = null, length = AWindow.wndList.length, max = 0, tmp;
 
@@ -156,6 +157,20 @@ AWindow.updateTopWindow = function()
 	//이런 경우 AWindow.topWindow 의 deactive 계열 함수만 호출된다.
 	
 	AWindow.makeTopWindow(toTopWnd);
+	
+	//마지막 윈도우가 닫혔으면 부모 컨테이너에게 active 이벤트를 발생시켜준다.
+	if(!toTopWnd && closeCntr)
+	{
+		var pWnd = closeCntr.getParent();
+		
+		pWnd.onWillActive(false);
+		pWnd.onActive(false);
+		
+		setTimeout(function()
+		{
+			if(pWnd.isValid()) pWnd.onActiveDone(false);
+		}, 0);
+	}
 };
 
 //toTopWnd 을 최상위로 올리는 로직 구현
@@ -217,10 +232,15 @@ AWindow.prototype.init = function(context)
 {
 	AContainer.prototype.init.call(this, context);
 	
+	//-------------------------------------------------------------------------------
+	//	isModal 은 모바일인 경우 (ios 브라우저 등에서) 
+	//	윈도우 밑(뒤)에 있는 화면에 터치 액션이 전달되는 버그가 있으므로 기본값을 true 로 한다.
+	//	모달리스로 셋팅을 하게 되면 ios 에서는 터치 액션이 배경에 전달됨. 
+	//	--> 차후 이 경우도 처리해야 된다면, 모달처럼 윈도우 창의 사이즈와 똑같은 Bg 를 동적으로 만들어 창 뒤에 배치하는 방법으로 해결하기 
 	
 	this.setOption(
 	{
-		isModal: false,
+		isModal: afc.isMobile,		//모바일이면 기본을 modal 로 셋팅, 위에 설명 참조.
 		isCenter: false,			//자동 중앙정렬 할지
 		isFocusLostClose: false,	//모달인 경우 포커스를 잃을 때 창을 닫을지
 		isFocusLostHide: false,		//모달인 경우 포커스를 잃을 때 창을 숨길지
@@ -393,8 +413,9 @@ AWindow.prototype.windowTouchBugFix = function(isOpen)
 		
 		//이전 윈도우가 사라지면서 자신을 띄웠을 때, 이전 윈도우가 터치한 정보가 자신에게 전달되는 것을 막음.
 		//아이폰에서는 this.actionDelay('input'); 이 작동하지 않는다.
-		
-		if(this.isOpenActionDelay) this.actionDelay();
+		//actionDelay 호출 때문에...ios 웹브라우저에서는 윈도우 자체 스크롤이 안되고 배경이 스크롤되는 버그가 발생한다.
+		//그럴 경우 actionDelay 가 호출되지 않도록 한다.
+		if(!afc.isIos && this.isOpenActionDelay) this.actionDelay();
 		
 		//자신을 띄운 하위 컨테이너에게 터치 정보가 전달되는 것을 막음. 
 		if(this.option.isModal)
@@ -606,7 +627,7 @@ AWindow.prototype.close = function(result, data)
 	//곧 닫힐 윈도우이기 때문에 정렬에서 맨 하위가 되도록 0을 셋팅한다.
 	this.$ele.css('z-index', 0);
 	
-	AWindow.updateTopWindow();
+	AWindow.updateTopWindow(this);
 	
 	//--------------------------------
 
@@ -672,7 +693,8 @@ AWindow.prototype.hide = function()
 	this.windowTouchBugFix(false);
 	
 	this.$ele.css('z-index', 0);
-	AWindow.updateTopWindow();
+	
+	AWindow.updateTopWindow(this);
 	
     this.$ele.hide();
 	if(this.option.isModal) this.modalBg.hide();

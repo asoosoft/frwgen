@@ -86,28 +86,31 @@ ATabView.prototype.init = function(context, evtListener)
 	{
 		this.tabArea.children().remove();
 		
-		var tabInfos = this.getMultiAttrInfo('data-tabinfo-'), p, infoArr, tmp, index=0, arr = {};
+		var tabInfos = this.getMultiAttrInfo('data-tabinfo-'), infoArr, tmp, index=0, arr = {};
 		
-		for(key in tabInfos)
+		if(tabInfos)
 		{
-			tmp = tabInfos[key].split(',')[3];
-			if(tmp) arr[tmp] = tabInfos[key];
-			else arr[index++] = tabInfos[key];
-		}
+			for(var key in tabInfos)
+			{
+				tmp = tabInfos[key].split(',')[3];
+				if(tmp) arr[tmp] = tabInfos[key];
+				else arr[index++] = tabInfos[key];
+			}
 
-		for(i in arr)
-		{
-			infoArr = arr[i].split(',');
-			this.addTab(infoArr[1], infoArr[2], infoArr[0]);
+			for(var i in arr)
+			{
+				infoArr = arr[i].split(',');
+				this.addTab(infoArr[1], infoArr[2], infoArr[0]);
+			}
+
+			var thisObj = this;
+
+			setTimeout(function()
+			{
+				var selTabId = thisObj.$ele.attr('data-tab-select');
+				if(selTabId) thisObj.selectTabById(selTabId);
+			}, 0);
 		}
-		
-		var thisObj = this;
-		
-		setTimeout(function()
-		{
-			var selTabId = thisObj.$ele.attr('data-tab-select');
-			if(selTabId) thisObj.selectTabById(selTabId);
-		}, 0);
 	}
 
 //	if(this.tabArea.css('visibility')=='hidden') this.hideTabArea();
@@ -215,8 +218,11 @@ ATabView.prototype.addTab = function(name, url, tabId, data, oneshot, isLoad, as
     tabEle.tabId = tabId;
     tabEle.data = data;
     //tabEle.view = null;
-	tabEle.oneshot = oneshot;
 	tabEle.asyncCallback = asyncCallback;
+	
+	if(oneshot==undefined || oneshot==null) oneshot = this.option.contentReload;
+	
+	tabEle.oneshot = oneshot;
 	
 	//자신과 연결되어 있는 탭 객체를 저장해 둔다.
 	content[0].tab = tabEle;
@@ -433,7 +439,9 @@ ATabView.prototype.tabChangeManage = function(tabEle)
 	$(this.selectedTab).addClass('ATabView_select');
 
 	//아직 뷰가 로드되지 않은 상태이거나 매번 릴로드 하는 옵션이면
-	if(!tabEle.content.view || this.option.contentReload) 
+	//if(!tabEle.content.view || this.option.contentReload) 
+	
+	if(!tabEle.content.view) //addtab 시점의 oneshot 으로 옮겨짐.
 	{
 		if(this.loadTabContent(tabEle, null, tabEle.asyncCallback))
 			this.activeTab(this.oldTab, this.selectedTab, true);
@@ -479,12 +487,12 @@ ATabView.prototype.activeTab = function(oldTab, newTab, reload)
 	//---------------------------------------------------------------------------
 	//	나중에 액티브될 경우 이벤트가 전달되지 않도록 사라질 때 disable 상태로 만든다.
 	
-	if(oldView && oldView.isActiveActionDelay) oldView.enable(false);
+	if(!afc.isIos && oldView && oldView.isActiveActionDelay) oldView.enable(false);
 	
 	this.beforeTabChanging(oldView, newView, reload);
 
 	//최초 액티브될 경우 이벤트가 전달되지 않도록 disable 시켜둔다.
-	if(reload && newView.isActiveActionDelay) newView.enable(false);
+	if(!afc.isIos && reload && newView.isActiveActionDelay) newView.enable(false);
 	//-----------------------------------------------------------------------------
 	
 	//if(this.isAnimation)
@@ -562,7 +570,7 @@ ATabView.prototype.activeTab = function(oldTab, newTab, reload)
 		//이전 탭에서 터치한 정보가 전달되지 안도록 
 		//disable 상태에서 잠시 딜레이를 준 후 enable 시켜준다.
 		
-		if(newView.isActiveActionDelay)
+		if(!afc.isIos && newView.isActiveActionDelay)
 		{
 			setTimeout(function() 
 			{ 
@@ -703,7 +711,7 @@ ATabView.prototype.afterTabChanged = function(oldView, newView, isFirst)
 		//if(newView.isInitDone) newView.onActiveDone(isFirst);
 	}
 	
-    if(oldView) oldView.onDeactiveDone();
+    if(oldView && oldView.isValid()) oldView.onDeactiveDone();
 };
 
 

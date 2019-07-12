@@ -64,10 +64,14 @@ AButtonEvent.prototype.actionLeaveState = function()
 AButtonEvent.prototype.defaultAction = function()
 {
 	this._click();
-	this._actionenter();
-	this._actionleave();
 	this._keydown();
 	this._keyup();
+
+	if(afc.isPC)
+	{
+		this._actionenter();
+		this._actionleave();
+	}
 };
 
 //---------------------------------------------------------------------------------------------------

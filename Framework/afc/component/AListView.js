@@ -32,12 +32,14 @@ function AListView()
 }
 afc.extendsClass(AListView, AComponent);
 
-//style="height: 60px;" --> attribute 에서 정보를 참조하기 위해 필요
+//####################################################################
+//	style="height: 60px;" --> attribute 에서 정보를 참조하기 위해 필요
+
 AListView.CONTEXT = 
 {
     tag: '<div data-base="AListView" data-class="AListView" class="AListView-Style" data-selectable="true">'+
-            '<div class="listview-row" style="height: 60px;"></div><div class="listview-row AListView-select"></div>'+ 
-			'<div class="listview-row"></div><div class="listview-row"></div></div>',
+            '<div class="listview-row" style="height: 60px;"></div><div class="listview-row AListView-select" style="height: 60px;"></div>'+ 
+			'<div class="listview-row" style="height: 60px;"></div><div class="listview-row" style="height: 60px;"></div></div>',
 
     defStyle: 
     {
@@ -87,7 +89,7 @@ AListView.prototype.init = function(context, evtListener)
 	//리스트뷰 기본 옵션
 	this.setOption(
 	{
-    	isViewPool: false,
+    	//isViewPool: false,
         isSelectable: this.getAttr('data-selectable'),			//선택 [불]가능 옵션 플래그
     	isUpdatePosition: this.getAttr('data-update-position'),	//리스트 뷰는 성능을 위해 기본적으로 updatePosition 이 호출되지 않도록 한다.
     	isWrap: this.getAttr('data-wrap'), 						//가로로 배치하다 공간이 없으면 개행하여 다시 추가, 주의 가로 스크롤 기능이 아님
@@ -118,6 +120,7 @@ AListView.prototype.init = function(context, evtListener)
 	}
 	
 	//wrapping, 가로로 배치하다 공간이 없으면 개행하여 다시 추가
+	//세로 스크롤 발생
 	if(this.option.isWrap && this.option.direction=='horizontal') 
 	{
 		this.itemWrapper.css(
@@ -139,10 +142,35 @@ AListView.prototype.init = function(context, evtListener)
     this.setSelectClass(selClass);
 	this.setDefaultUrl(this.getAttr('data-default-url'));
     
-	if(!window._afc) 
+	//개발 시점
+	if(window._afc)
+	{
+		this.$ele.addClass('listview-dev');
+	}
+	//실행 시점
+	else 
 	{
 		this.$ele.children().remove();
 		this.$ele.append(this.scrollArea);
+		
+		var itemInfos = this.getMultiAttrInfo('data-iteminfo-'), arr = [], tmp, key, inx;
+		
+		if(itemInfos)
+		{
+			//key is attr key, 순서대로 추가하기 위해
+			for(key in itemInfos)
+			{
+				tmp = itemInfos[key].split(',');	//index, url, itemId
+
+				inx = Number(tmp[0]);
+				arr[inx] = tmp[1];
+			}
+
+			for(inx in arr)
+			{
+				this.addItem(arr[inx], ['']);
+			}
+		}
 	}
     
     //this.escapePreventTouch();
@@ -150,6 +178,8 @@ AListView.prototype.init = function(context, evtListener)
 	//this.setScrollArrow();
 	
 	//this.createBackup(50, 20);
+	
+	if(afc.isScrollIndicator) this.enableScrollIndicator();
 };
 
 AListView.prototype.setItemHeight = function(height)
@@ -185,7 +215,7 @@ AListView.prototype.callSubActiveEvent = function(funcName, isFirst)
 
 AListView.prototype.enableScrlManager = function()
 {
-	if(this.scrlManager) return;
+	if(this.scrlManager) return this.scrlManager;
 	
 	this.scrlManager = new ScrollManager();
 	
@@ -193,6 +223,10 @@ AListView.prototype.enableScrlManager = function()
 	this.scrollArea.css('-webkit-overflow-scrolling', '');
 	
 	this.scrollImplement();
+	
+	this.aevent._scroll();
+	
+	return this.scrlManager;
 };
 
 AListView.prototype.setScrollComp = function(acomp)
@@ -226,7 +260,7 @@ AListView.prototype.scrollImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManager.initScroll(e.changedTouches[0].clientY);
 		
@@ -248,7 +282,7 @@ AListView.prototype.scrollImplement = function()
 		if(!isDown) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManager.scrollCheck(e.changedTouches[0].clientY, _scrlHelper);
 	});
@@ -288,11 +322,29 @@ AListView.prototype.setScrollArrow = function(topHeight)
 };
 
 
+AListView.prototype.enableScrollIndicator = function()
+{
+	this.scrlIndicator = new ScrollIndicator();
+	
+	var type = 'vertical';
+	
+	//가로 방향이고 랩 옵션이 없는 경우만 가로 스크롤이 발생
+	if(this.option.direction=='horizontal' && !this.option.isWrap) type = 'horizontal';
+		
+	this.scrlIndicator.init(type, this.scrollArea[0]);
+};
+
+
 AListView.prototype.scrollTopManage = function()
 {
 	if(this.scrlManager) this.scrlManager.stopScrollTimer();
 
-	if(this.bkManager && this.bkManager.checkHeadBackup()) return false;
+	if(this.bkManager && this.bkManager.checkHeadBackup()) 
+	{
+		if(this.bkManager.isMoveReal()) this.scrollToTop();
+		
+		return false;
+	}
 	else return true;
 };
 
@@ -300,7 +352,12 @@ AListView.prototype.scrollBottomManage = function()
 {
 	if(this.scrlManager) this.scrlManager.stopScrollTimer();
 
-	if(this.bkManager && this.bkManager.checkTailBackup()) return false;
+	if(this.bkManager && this.bkManager.checkTailBackup()) 
+	{
+		if(this.bkManager.isMoveReal()) this.scrollToBottom();
+		
+		return false;
+	}
 	else return true;
 };
 
@@ -523,13 +580,8 @@ AListView.prototype.indexOfItem = function(item)
 
 AListView.prototype.removeItem = function(item)
 {
-    if(this.option.isViewPool) 
-    {
-    	item.view.removeFromView(true);
-    	theApp.resPool.pushView(item.view);
-    }
-    else item.view.removeFromView();
-    
+	item.view.removeFromView();
+
     if(item===this.selectItem) this.selectItem = null;
     
     $(item).remove();
@@ -544,25 +596,12 @@ AListView.prototype.removeItemByIndex = function(index)
 
 AListView.prototype.removeAllItems = function()
 {
-    if(this.option.isViewPool)
+    this.getItems().each(function()
     {
-	    this.getItems().each(function()
-	    {
-	    	this.view.removeFromView(true);
-	    	theApp.resPool.pushView(this.view);
+    	this.view.removeFromView();
 			
-	    	$(this).remove();
-	    });
-    }
-    else
-    {
-	    this.getItems().each(function()
-	    {
-	    	this.view.removeFromView();
-			
-	    	$(this).remove();
-	    });
-    }
+    	$(this).remove();
+    });
 	
 	if(this.bkManager) this.bkManager.clearAll();
 	
@@ -612,12 +651,16 @@ AListView.prototype.scrollToTop = function(isAni)
     //this.scrollArea[0].scrollTop = this.scrollArea[0].scrollHeight*-1;
 	//this.scrollArea[0].scrollTop = 0;
 	
+	if(this.bkManager) this.bkManager.setMoveReal(true);
+	
 	this.scrollTo(0, isAni);
 };
 
 AListView.prototype.scrollToBottom = function(isAni)
 {
     //this.scrollArea[0].scrollTop = this.scrollArea[0].scrollHeight;
+	
+	if(this.bkManager) this.bkManager.setMoveReal(true);
 	
 	this.scrollTo(this.scrollArea[0].scrollHeight, isAni);
 };
@@ -693,59 +736,24 @@ AListView.prototype.createItems = function(url, dataArray, posItem, isPrepend, a
         
         newItems.push(item);
 		
-		if(this.option.isViewPool) 
+		if(asyncCallback) 
 		{
-			aview = theApp.resPool.popView(url);
-			
-			if(aview)
+			AView.createView(item, url, this, null, !this.option.isUpdatePosition, null, function(_aview)
 			{
-				aview.init(aview.element);
-			
-				AView.setViewInItem(aview, item, this);
-				
-				//속도에 이슈가 있어 timeout 을 주지 않고 바로 호출함.
-				aview._initDoneManage(!thisObj.option.isUpdatePosition);
-			}
-			else aview = AView.createView(item, url, this, null, !this.option.isUpdatePosition);
+				thisObj._afterCreated(_aview);
+
+				if(--dataLen==0 && typeof(asyncCallback)=='function') 
+				{
+					asyncCallback(newItems);
+				}
+			});
 		}
-		
-		else
+		else 
 		{
-			if(typeof(url) == 'string') 
-			{
-				if(asyncCallback) 
-				{
-					AView.createView(item, url, this, null, !this.option.isUpdatePosition, null, function(_aview)
-					{
-						thisObj._afterCreated(_aview);
-						
-						if(--dataLen==0 && typeof(asyncCallback)=='function') 
-						{
-							asyncCallback(newItems);
-						}
-					});
-				}
-				else 
-				{
-					aview = AView.createView(item, url, this, null, !this.option.isUpdatePosition);
-					url = aview;
-				}
-			}
-			else 
-			{
-				var compIdPrefix = afc.makeCompIdPrefix();
+			if(i==0) aview = AView.createView(item, url, this, null, !this.option.isUpdatePosition);
 
-				aview = url.cloneComponent(compIdPrefix, function(cloneComp, context)
-				{
-					cloneComp.owner = thisObj;
-					context.container = thisObj.getContainer();
-				});
-
-				AView.setViewInItem(aview, item, this);
-				
-				//속도에 이슈가 있어 timeout 을 주지 않고 바로 호출함.
-				aview._initDoneManage(!thisObj.option.isUpdatePosition);
-			}
+			//두번째 아이템부터는 마지막 로드된 html string 으로 뷰를 생성한다.
+			else aview = AView.createView(item, url, this, null, !this.option.isUpdatePosition, null, null, AView.lastLoadedHtml);
 		}
 		
 		if(!asyncCallback) this._afterCreated(aview);
@@ -798,8 +806,12 @@ AListView.prototype.updatePosition = function(pWidth, pHeight)
     }
 };
 
+//다른 컴포넌트에 있는 아이템이 이동하며 추가될 수도 있다.
 AListView.prototype.itemInsertManage = function(item, posItem, isPrepend)
 {
+	//다른 리스트뷰에서 이동될 수도 있으므로 owner 를 자신으로 셋팅해 준다.
+	if(item.view) item.view.owner = this;
+
 	if(posItem)
 	{
 		if(isPrepend) $(item).insertBefore(posItem);
@@ -957,8 +969,7 @@ AListView.prototype.getRealKey = function(data)
 	return data[this.realField];
 };
 
-
-
+//ListView는 outblock 에 더미필드를 셋팅해야 이 함수가 호출된다.
 AListView.prototype.setQueryData = function(dataArr, keyArr, queryData)
 {
 	if(queryData.isReal) this.doRealPattern(dataArr, keyArr, queryData);
@@ -1000,6 +1011,7 @@ AListView.prototype.doAddPattern = function(dataArr, keyArr, queryData)
 	for(var i=0; i<items.length; i++)
 	{
 		data = dataArr[i];
+		
 		items[i].view.updateChildMappingComp([data], queryData);
 		
 		//리얼맵이 활성화 되어 있으면 조회 시점에 리얼맵을 만든다.
@@ -1038,11 +1050,52 @@ AListView.prototype._setDataStyleObj = function(styleObj)
 };
 
 
+//AListView 의 enableScrlManager 가 호출 되어졌고 스크롤 가능 영역에 추가되어져 있을 경우
+//스크롤이 끝나고(ex, scrollBottom) 상위 스크롤이 연속적으로 발생되도록 하려면
+//상위 스크롤은 enableScrlManager 가 호출되어져야 하고 자신은 overscrollBehavior 함수를 호출해야 한다.
+AListView.prototype.overscrollBehavior = function(disableScrlManager)
+{
+	if(!this.scrlManager) return;
 
+	var thisObj = this, oldScrollTop, 
+		scrlArea = this.scrollArea[0], startY = 0, isTouchLeave = false, isRemove = true;
 
+	//touch start
+	AEvent.bindEvent(this.element, AEvent.ACTION_DOWN, function(e)
+	{
+		if(isRemove)
+		{
+			isRemove = false;
+			
+			thisObj.scrlManager.addDisableManager(disableScrlManager);
+		}
+		
+		oldScrollTop = scrlArea.scrollTop;
+		
+		startY = e.changedTouches[0].clientY;
+		
+		isTouchLeave = false;
+	});
+	
+	AEvent.bindEvent(this.element, AEvent.ACTION_MOVE, function(e)
+	{
+		if(isTouchLeave) return;
+		
+		if(Math.abs(e.changedTouches[0].clientY - startY) >= disableScrlManager.option.moveDelay) 
+		{
+			isTouchLeave = true;
 
+			//터치 이후 스크롤의 변화가 없으면 상위 스크롤이 작동되도록 해줌.
+			if(oldScrollTop==scrlArea.scrollTop)
+			{
+				isRemove = true;
 
-
+				thisObj.scrlManager.removeDisableManager(disableScrlManager);
+			}
+		}
+	});
+	
+};
 
 
 

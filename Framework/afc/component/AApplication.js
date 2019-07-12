@@ -68,119 +68,89 @@ AApplication.prototype.onReady = function()
 
 	//키보드 이벤트 초기화
 	this.initKeyEvent();
+	
+	var windowHeight = $(window).height(),
+		_originalSize = $(window).width() + windowHeight, isKeypadVisible = false;
+		
+	//console.log('--> ' + windowHeight + ',' + _originalSize);
 
     var thisObj = this;
     window.addEventListener('orientationchange', function()
     {
-    	//var page = thisObj.navigator.getActivePage();
-    	//if(!page) return;
-    	
+		//console.log("... orientationchange ...");
+		
+		var _cntr = KeyboardManager.container;
+		
+		if(_cntr && KeyboardManager.resizeWebview) KeyboardManager.restoreHeight(_cntr);
+		
       	switch (window.orientation) 
       	{
         	case 0: //portrait
         	case 180:
         		thisObj.orientation = 'portrait';
-        		//page.onOrientationChange('portrait');
+				windowHeight = $(window).width();	//반대값을 저장해야 실제 회전된 후의 값이 된다.
           	break;
           	
         	case 90: 
         	case -90: //landscape
         		thisObj.orientation = 'landscape';
-        		//page.onOrientationChange('landscape');
+				windowHeight = $(window).height();	//반대값을 저장해야 실제 회전된 후의 값이 된다.
           	break;
           	
         	default:
 	            //viewport.setAttribute('content', 'width=' + vpwidth + ', initial-scale=0.25, maximum-scale=1.0;')
           	break;
       	}
-        
+		
     }, false);
-
-	this.isOrientationChanged = false;
-	this.prevOrientation = this.orientation;
 	
-    window.addEventListener('resize', function()
+    window.addEventListener('resize', function(e)
     {
+		//console.log("on resize ...");
+	
 		var isResize = true;
+		
+		//#########################################################
+		//	아이폰의 경우 키패드가 올라올 때, resize 가 발생하지 않는다.
+		
+		//모든 모바일 브라우저, native 의 경우도 adjustResize 일 경우 발생한다.
 		if(afc.isMobile)
 		{
-			var focusComp = AComponent.getFocusComp();
-			var wh = $(window).height();
+			var wh = $(window).height(), ww = $(window).width();
 			
-			// 회전이 되지 않은 경우
-			if(thisObj.prevOrientation == thisObj.orientation)
+			//console.log('====> ' + ww + ',' + wh + ',' + _originalSize);
+			
+			//# 키패드가 올라 오는 경우
+			//키패드 없이, 가로/세로 모드 전환 시 2픽셀 정도 차이가 날 수 있으므로 
+			//if(ww+wh!=_originalSize) 이렇게 비교하면 안됨. 좀 더 차이가 날 경우 수치를 조정한다.
+			if(Math.abs(ww+wh - _originalSize) > 2)
 			{
-				//console.log('EXTRMK - 1.회전이 되지 않은 경우');
-				// 회전X인 경우 모바일에서 작동하는 경우 화면사이즈를 변경할 수 없으므로
-				// 키보드가 on/off 되는 경우밖에 없다.(추측) resize를 하지 않게 하여 처리한다.
+				//console.log("keyboard show up");
 				
-				// 키보드의 on/off 여부를 판단한다.
-				var isKeypadVisible;
-				if(thisObj.windowHeight > wh+300) isKeypadVisible = true;
-				else isKeypadVisible = false;
+				isResize = false;			//키패드에 의해 리사이즈 이벤트가 발생된 경우는 reportEvent 를 전송하지 않는다.
+				isKeypadVisible = true;
+				
+				KeyboardManager.onKeyBoardShow(wh, windowHeight - wh);
+			}
+			
+			//# 키패드가 사라지는 경우
+			else if(isKeypadVisible)
+			{
+				//console.log("keyboard closed");
+				
+				isResize = false;			//키패드에 의해 리사이즈 이벤트가 발생된 경우는 reportEvent 를 전송하지 않는다.
+				isKeypadVisible = false;
 
-				var isOrientationChanged = thisObj.isOrientationChanged;
-				// 이전에 화면이 회전된 경우
-				if(isOrientationChanged)
-				{
-					//console.log('EXTRMK - 1.1.이전에 화면이 회전된 경우');
-					
-					// resize X 이전에 화면이 회전되었고 키패드가 있는 경우
-					if(isKeypadVisible)
-					{
-						//console.log('EXTRMK - 1.1.1키패드가 있는 경우');
-						isResize = false;
-					}
-					// resize O 이전에 화면이 회전되었고 키패드가 없는 경우
-					else
-					{
-						//console.log('EXTRMK - 1.1.2키패드가 없는 경우');
-						thisObj.isOrientationChanged = false;
-					}
-				}
-				else
-				{
-					//console.log('EXTRMK - 1.2.이전에 화면이 회전되지 않은 경우');
-					// 키보드가 올라가거나 내려가는 경우
-					// resize X
-					if(afc.isKeypadVisible != isKeypadVisible)
-					{
-						//console.log('EXTRMK - 1.2.1.키보드 on/off 전환');
-						isResize = false;
-					}
-				}
+				KeyboardManager.onKeyBoardHide();
 				
-				if(afc.isKeypadVisible != isKeypadVisible)
-				{
-					if(isKeypadVisible)
-					{
-						var keyboardH = thisObj.windowHeight - wh;
-						//setTimeout(function(){ KeyboardManager.onKeyBoardShow(wh, keyboardH); });
-						KeyboardManager.onKeyBoardShow(wh, keyboardH);
-					}
-					else
-					{
-						//setTimeout(function(){ KeyboardManager.onKeyBoardHide(); });
-						KeyboardManager.onKeyBoardHide();
-					}
-				}
-					
-				afc.isKeypadVisible = isKeypadVisible;
-			}
-			// 회전이 된 경우
-			else
-			{
-				//console.log('EXTRMK - 2.회전이 된 경우');
-				thisObj.isOrientationChanged = true;
+				AWindow.reportMoveCenter();
 			}
 			
-			thisObj.windowHeight = wh;
-			thisObj.prevOrientation = thisObj.orientation;
+			windowHeight = wh;
 		}
 		
-		//console.log('EXTRMK - ' + isResize + ' / ' + afc.isKeypadVisible);
-		
 		// resize를 해도 되는 경우에만 resize 처리한다.
+		// 키패드에 의해 리사이즈 이벤트가 발생된 경우는 reportEvent 를 전송하지 않는다.
 		if(isResize)
 		{
 			AWindow.reportResizeEvent();
@@ -190,26 +160,8 @@ AApplication.prototype.onReady = function()
 
 			else ANavigator.reportResizeEvent();
 		}
-		else if(!afc.isKeypadVisible) AWindow.reportMoveCenter();
 
-		/*//AWindow.reportResizeEvent();
-		
-		if(theApp.mainContainer)
-			theApp.mainContainer.onResize();
-		
-		else ANavigator.reportResizeEvent();*/
-    });
-	
-	//asoocool, ios 스마트폰 웹에서 body 가 scroll bounce 되는 효과를 제거	
-	/*
-	if(afc.isIos && !afc.isHybrid)
-	{
-		this.rootContainer.element.addEventListener('touchstart', function(e)
-		{
-			e.preventDefault();	
-		});
-	}
-	*/
+    });	
 
 };
 
@@ -427,6 +379,8 @@ AApplication.prototype.onClose = function()
 
 AApplication.prototype.onError = function(message, url, lineNumber)
 {
+	AIndicator.hide();
+	
 	var totMsg = message + ', Line - ' + lineNumber + ', ' + url;
 	
 	AfcMessageBox('error', totMsg);
@@ -471,4 +425,6 @@ function AfcMessageBox(title, message, type, callback, modaless)
 	
 	return wnd;
 }
+
+
 

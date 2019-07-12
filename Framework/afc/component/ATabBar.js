@@ -352,7 +352,7 @@ ATabBar.prototype.addTab = function(tabId, title, cntr, ttMsg)
 				comps[2].invisible(); 
 			}
 		);
-
+		
 		comps[2].eventStop = true;
 		comps[2].addEventListener('click', this, 'onCloseBtnClick');
 	}

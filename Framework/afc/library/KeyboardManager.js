@@ -9,7 +9,8 @@ var KeyboardManager =
 	displayHeight: 0,
 	topWnd: null,
 	wndMove: 0,
-	oriPos: null
+	oriPos: null,
+	resizeWebview: true
 };
 
 KeyboardManager.onKeyBoardShow = function(displayHeight, keyboardHeight)
@@ -21,7 +22,8 @@ KeyboardManager.onKeyBoardShow = function(displayHeight, keyboardHeight)
 	
 	//textfield option
 	//키보드 매니저 사용여부에 대한 옵션
-	if(!$focus[0].acomp.option.isEnableKM) return;
+	//외부 웹 오픈되는 경우 포커스된 엘리먼트가 컴포넌트가 아닌 경우가 있어서 acomp 존재여부도 체크 
+	if(!$focus[0].acomp || !$focus[0].acomp.option.isEnableKM) return;
 	
 	KeyboardManager.displayHeight = displayHeight;
 	var topWnd = KeyboardManager.topWnd = AWindow.getTopWindow();
@@ -32,8 +34,9 @@ KeyboardManager.onKeyBoardShow = function(displayHeight, keyboardHeight)
 		if(topWnd.element.style['height'] == '100%')
 		{
 			_add_scrlMaker(topWnd);
+			
 			// topWnd를 초기화하여 이후의 처리를(onKeyBoardHide, inputScrollToCenter)
-			// scrlMaker 가 있을 때의 처리와 동일하게 한다.
+			// scrlMaker 가 있을 때의 처리와 동일하게 한다. 그래서 null 로 셋팅한다.
 			KeyboardManager.topWnd = null;
 		}
 		else if(!KeyboardManager.oriPos)
@@ -41,7 +44,8 @@ KeyboardManager.onKeyBoardShow = function(displayHeight, keyboardHeight)
 			KeyboardManager.oriPos = KeyboardManager.topWnd.getPos();
 			
 			// % to px 처리 관련 함수 호출(모바일웹)
-			KeyboardManager.replaceHeight(KeyboardManager.topWnd, displayHeight + keyboardHeight);
+			if(KeyboardManager.resizeWebview)
+				KeyboardManager.replaceHeight(KeyboardManager.topWnd, displayHeight + keyboardHeight);
 		}
 	}
 	else
@@ -54,28 +58,42 @@ KeyboardManager.onKeyBoardShow = function(displayHeight, keyboardHeight)
 	}
 	
 	//textfield 위치 계산
-	KeyboardManager.inputScrollToCenter($focus[0], true);
+	
+	//adjustResize
+	if(KeyboardManager.resizeWebview) $focus[0].scrollIntoView(false);
+	
+	//adjustPan
+	else KeyboardManager.inputScrollToCenter($focus[0], true);
 	
 	//$focus.addClass('_INPUT_FOCUS');
 	
 	function _add_scrlMaker(_cntr)
 	{
-		var _scrlMaker = document.getElementById('scroll-maker');
-		if(_scrlMaker) _scrlMaker = $(_scrlMaker);
+		if(KeyboardManager.resizeWebview)
+		{
+			KeyboardManager.container = _cntr;
+
+			// % to px 처리 관련 함수 호출(모바일웹)
+			KeyboardManager.replaceHeight(_cntr, displayHeight + keyboardHeight);
+		}
 		else
 		{
-			_scrlMaker = $('<div id="scroll-maker"></div>');
-			_cntr.$ele.append(_scrlMaker);
-		
-			KeyboardManager.container = _cntr;
-			KeyboardManager.prevOverflow = _cntr.$ele.css('overflow');
-			_cntr.$ele.css('overflow', 'auto');
+			var _scrlMaker = document.getElementById('scroll-maker');
+			
+			if(_scrlMaker) _scrlMaker = $(_scrlMaker);
+			else
+			{
+				_scrlMaker = $('<div id="scroll-maker"></div>');
+				_cntr.$ele.append(_scrlMaker);
+
+				KeyboardManager.container = _cntr;
+				KeyboardManager.prevOverflow = _cntr.$ele.css('overflow');
+				_cntr.$ele.css('overflow', 'auto');
+			}
+
+			_scrlMaker.css({position:'absolute', width:'100%', height:keyboardHeight+'px', bottom:(-1*keyboardHeight)+'px'});
 		}
 		
-		// % to px 처리 관련 함수 호출(모바일웹)
-		KeyboardManager.replaceHeight(_cntr, displayHeight + keyboardHeight);
-		
-		_scrlMaker.css({position:'absolute', width:'100%', height:keyboardHeight+'px', bottom:(-1*keyboardHeight)+'px'});
 	}
 };
 
@@ -95,7 +113,8 @@ KeyboardManager.onKeyBoardHide = function()
 		if(topWnd.$ele)
 		{
 			topWnd.setPos(KeyboardManager.oriPos);
-			KeyboardManager.restoreHeight(topWnd);//if(KeyboardManager.oriH) KeyboardManager.topWnd.setHeight(KeyboardManager.oriH);	
+			
+			if(KeyboardManager.resizeWebview) KeyboardManager.restoreHeight(topWnd);
 		}
 		KeyboardManager.wndMove = 0;
 		KeyboardManager.topWnd = null;
@@ -105,23 +124,21 @@ KeyboardManager.onKeyBoardHide = function()
 	{
 		// container는 height가 100%인 윈도우와 그외 컨테이너이다.
 		var _cntr = KeyboardManager.container;
-		if(_cntr)
+		if(_cntr && _cntr.$ele)
 		{
-			if(_cntr.$ele)
-			{
-				// % to px 바꾸기 전 값으로 변경하는 함수 호출(모바일웹)
-				KeyboardManager.restoreHeight(_cntr);
+			// % to px 바꾸기 전 값으로 변경하는 함수 호출(모바일웹)
+			if(KeyboardManager.resizeWebview) KeyboardManager.restoreHeight(_cntr);
 				
-				// container에 이전 overflow 값 세팅
-				if(KeyboardManager.prevOverflow) _cntr.$ele.css('overflow', KeyboardManager.prevOverflow);
-			}
+			// container에 이전 overflow 값 세팅
+			if(KeyboardManager.prevOverflow) _cntr.$ele.css('overflow', KeyboardManager.prevOverflow);
 		}
 		
 		// container, prevOverflow, oriH 초기화
 		KeyboardManager.container = KeyboardManager.prevOverflow = null;
 		
-		$('#scroll-maker').remove();
+		if(!KeyboardManager.resizeWebview) $('#scroll-maker').remove();
 	}
+	
 	KeyboardManager.oriH = null;
 
 	$focus.blur();
@@ -129,7 +146,7 @@ KeyboardManager.onKeyBoardHide = function()
 
 KeyboardManager.replaceHeight = function(cntr, fullH)
 {
-	if(afc.isSystemWebView) return;
+	//if(afc.isSystemWebView) return;
 	
 	var cntrH = cntr.element.style['height'];
 	if(cntrH.indexOf('%') > -1)
@@ -141,7 +158,7 @@ KeyboardManager.replaceHeight = function(cntr, fullH)
 
 KeyboardManager.restoreHeight = function(cntr)
 {
-	if(afc.isSystemWebView) return;
+	//if(afc.isSystemWebView) return;
 	
 	if(KeyboardManager.oriH) cntr.setHeight(KeyboardManager.oriH);
 	KeyboardManager.oriH = 0;

@@ -23,8 +23,8 @@ afc.extendsClass(AButton, AComponent);
 
 AButton.CONTEXT = 
 {
-    //tag:'<button data-base="AButton" data-class="AButton" data-flag="0001" data-state="0" class="AButton-Style AButton-normal">Button</button>',
-	tag:'<button data-base="AButton" data-class="AButton" data-flag="0001" class="AButton-Style">Button</button>',
+    //tag:'<button data-base="AButton" data-class="AButton" data-state="0" class="AButton-Style AButton-normal">Button</button>',
+	tag:'<button data-base="AButton" data-class="AButton" class="AButton-Style">Button</button>',
 
     defStyle: 
     {
@@ -47,7 +47,11 @@ AButton.prototype.init = function(context, evtListener)
 {
 	AComponent.prototype.init.call(this, context, evtListener);
 	
-	if(afc.isIos && !this.getStyle("padding") && !this.getStyle("padding-left") && !this.getStyle("padding-right") && !this.getStyle("padding-top") && !this.getStyle("padding-bottom")) this.$ele.css('padding','0px 0px 1px 0px');
+	//	????
+	//	이거 꼭 이렇게 해야 하나?
+	//	????
+	if(afc.isIos && !this.getStyle("padding") && !this.getStyle("padding-left") && !this.getStyle("padding-right") && !this.getStyle("padding-top") && !this.getStyle("padding-bottom")) 
+		this.$ele.css('padding','0px 0px 1px 0px');
 	
 	this.$img = this.$ele.children();
 	

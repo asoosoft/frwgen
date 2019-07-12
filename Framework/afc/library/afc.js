@@ -216,6 +216,16 @@ afc.enableUserSelect = function(enable, element)
 	}
 };
 
+afc.enableScrollIndicator = function()
+{
+	//if(afc.isIos) return;
+	
+	var strCss = '::-webkit-scrollbar { display: none; }'; 
+	$('<style></style>').text(strCss).appendTo('head');	
+
+	afc.isScrollIndicator = true;
+};
+
 
 
 //--------------------------------------------------------------------------------------------
@@ -485,14 +495,14 @@ afc.loadSync = function(trgEle, url, callback, searchValue, newValue, isAsync)
 	        	var trgObj = $(trgEle);
 	        	trgObj.children().remove();
 				trgObj.append(html);
-				if(callback) callback.call(trgEle, true);
+				if(callback) callback.call(trgEle, html);
         	}
         	else if(callback) callback(html);
         },
         
         error: function() 
         {
-        	if(callback) callback.call(trgEle, false);
+        	if(callback) callback.call(trgEle, null);
         }
     });
 };
@@ -612,10 +622,13 @@ afc.enableApp = function(isEnable)
 };
 */
 
-afc.refreshApp = function()
+afc.refreshApp = function($cntr)
 {
-	var tmp = $('<div style="position:absolute; z-index:0; width:1px; height:1px;"></div>');
-	$('body').append(tmp);
+	var tmp = $('<div style="position:absolute; z-index:0; width:1px; height:1px;"> </div>');
+	
+	if(!$cntr) $cntr = $('body');
+	
+	$cntr.append(tmp);
 
 	setTimeout(function() { tmp.remove(); }, 700);
 };
@@ -742,6 +755,8 @@ afc.makeMeta = function()
     var scale = params['scale'];
     var density = params['density'];
     
+	afc.urlParameter = params;
+	
     //alert(navigator.userAgent);
     
 	//var meta = null,
@@ -845,7 +860,9 @@ afc.browserCheck = function()
 		else if(agent.indexOf("chrome") > -1) 
 		{
 			afc.isChrome = true;
-			//afc.scrlWidth = 14;	//자체적으로 14로 커스텀 했음.
+			afc.scrlWidth = 17;
+			
+			//프로젝트에서 커스텀한 경우 이 값을 변경한다.
 		}
 	}
 	

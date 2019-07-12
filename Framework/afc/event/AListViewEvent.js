@@ -44,25 +44,36 @@ AListViewEvent.prototype._scroll = function()
 	if(this.bScrollBind) return;
 	this.bScrollBind = true;
 	
-	var alistview = this.acomp;
+	var alistview = this.acomp, oldScrollTop = alistview.scrollArea[0].scrollTop;
+	
 	alistview.scrollArea[0].addEventListener('scroll', function(e)
 	{
-		alistview.reportEvent('scroll', this);
-		
+		alistview.reportEvent('scroll', this, e);
 		
 		var bottomVal = this.scrollHeight - this.clientHeight - this.scrollTop;
 	
-		if(bottomVal < 1)	//0.398472 와 같이 소수점이 나올 수 있다.
+		if(bottomVal < 1)	//안드로이드인 경우 0.398472 와 같이 소수점이 나올 수 있다.
 		{
+			//ios 는 overscrolling 때문에 음수값이 여러번 발생한다.
+			//아래와 같이 비교할 경우 바운스 되는 상황에 따라 0 이 되는 경우가 여러번 발생할 수 있다.
+			//if(afc.isIos && bottomVal!=0) return;
+			
+			//이미 scroll bottom 이벤트가 발생했으므로 overscrolling 에 대해서는 무시한다.
+			if(afc.isIos && (this.scrollHeight-this.clientHeight-oldScrollTop) < 1) return;
+			
 			if(alistview.scrollBottomManage())
-				alistview.reportEvent('scrollbottom', this);
+				alistview.reportEvent('scrollbottom', this, e);
 		}
 		
 		else if(this.scrollTop < 1)	//0.398472 와 같이 소수점이 나올 수 있다.
 		{
+			if(afc.isIos && oldScrollTop < 1) return;
+			
 			if(alistview.scrollTopManage())
-				alistview.reportEvent('scrolltop', this);
+				alistview.reportEvent('scrolltop', this, e);
 		}
+				
+		oldScrollTop = this.scrollTop;
 	});
 };
 

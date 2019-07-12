@@ -136,6 +136,10 @@ BackupManager.prototype.applyBackupScroll = function()
 	return 0;
 };
 
+//실제 ScrollTop, ScrollBottom 을 구현하기 위한 변수, AListView, AGrid 에서 사용
+BackupManager.prototype.isMoveReal = function() { return this.moveReal; };
+BackupManager.prototype.setMoveReal = function(enable) { this.moveReal = enable; };
+
 BackupManager.prototype.checkHeadBackup = function()
 {
 	var resCount = this.getHRestoreCount();
@@ -159,6 +163,8 @@ BackupManager.prototype.checkHeadBackup = function()
 
 		return true;
 	}
+	
+	this.setMoveReal(false);
 		
 	return false;
 };
@@ -187,6 +193,8 @@ BackupManager.prototype.checkTailBackup = function()
 		return true;
 	}
 	
+	this.setMoveReal(false);
+	
 	return false;
 };
 
@@ -198,7 +206,7 @@ BackupManager.prototype.appendItemManage = function(items)//, skipApplyBackupScr
 	if(this.delegator.getTotalCount()>=this.maxRow)
 	{
 		//백업중이면 백업스택에 추가
-		if(this.getTRestoreCount()>0)
+		if(this.getTRestoreCount()>0 || this.delegator.directBackup)
 		{
 			for(var i=0; i<items.length; i++)
 				this.backupTailPre(items[i]);

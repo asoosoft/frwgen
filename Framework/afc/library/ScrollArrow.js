@@ -140,6 +140,10 @@ ScrollArrow.prototype.scrollVertProc = function()
 		
 		if(this.scrollHeight == this.clientHeight + this.scrollTop) thisObj.onScrollSecond();
 		else if(this.scrollTop == 0) thisObj.onScrollFirst();
+		
+		//asoocool test
+		//var ratio = this.scrollTop/(this.scrollHeight-this.clientHeight);
+		//thisObj.arrow1.css('top', this.clientHeight*ratio+'px');
 	});
 	
 	setTimeout(function()
@@ -258,7 +262,4 @@ ScrollArrow.prototype.visibleCheckHori = function()
 	}
 	else this.arrow2.hide();
 };
-
-
-
 

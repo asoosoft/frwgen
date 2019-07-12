@@ -177,8 +177,7 @@ AEvent.prototype._actiondown = function()
 	this.acomp.bindEvent(AEvent.ACTION_DOWN, function(e)
 	{
 		thisObj.actionDownState();
-		//thisObj.acomp.reportEvent('actiondown', null, e);
-		thisObj.acomp.reportEventDelay('actiondown', null, 0, e);
+		thisObj.acomp.reportEvent('actiondown', null, e);
 	});
 };
 
@@ -269,17 +268,15 @@ AEvent.prototype._click = function(evtName)
 		
 		if(acomp.eventStop) e.stopPropagation();
 		
-		//모바일 일 경우만 비교하고
-		//PC 버전일 경우는 action leave 에서 처리
-		if(!afc.isPC)
+		//PC 버전의 AButton 은 AButtonEvent 의 action leave 에서 처리
+		if(afc.isPC && acomp instanceof AButton) return;
+		
+		var oe = e.changedTouches[0];
+		if(Math.abs(oe.clientX - startX) > AEvent.TOUCHLEAVE || Math.abs(oe.clientY - startY) > AEvent.TOUCHLEAVE) 
 		{
-			var oe = e.changedTouches[0];
-			if(Math.abs(oe.clientX - startX) > AEvent.TOUCHLEAVE || Math.abs(oe.clientY - startY) > AEvent.TOUCHLEAVE) 
-			{
-				thisObj.isTouchLeave = true;
-				thisObj.actionCancelState();
-				//if(acomp.isSafeClick) AEvent.TOUCHTIME = new Date().getTime();
-			}
+			thisObj.isTouchLeave = true;
+			thisObj.actionCancelState();
+			//if(acomp.isSafeClick) AEvent.TOUCHTIME = new Date().getTime();
 		}
 		
 	});
@@ -390,39 +387,43 @@ AEvent.prototype._longtab = function()
 AEvent.prototype._swipe = function()
 {
 	var scrlManager = new ScrollManager();
-	scrlManager.setOption({moveDelay:200});
+	//scrlManager.setOption({moveDelay:200});
+	//스와이프 이벤트 감도, 값이 작을 수록 작은 스와이프에도 이벤트가 발생한다.
+	scrlManager.setOption({moveDelay:100});
 	
-	var isDown = false, thisObj = this, evtArea = this.acomp.element;
+	var isDown = false, acomp = this.acomp;
 	
-	AEvent.bindEvent(evtArea, AEvent.ACTION_DOWN, function(e)
+	acomp.bindEvent(AEvent.ACTION_DOWN, function(e)
 	{
 		isDown = true;
+		
+		if(acomp.eventStop) e.stopPropagation();
+		
 		//asoocool
+		//이 부분을 추가하면 다른 스크롤이 발생하지 않음.
 		//e.preventDefault();
 
 		scrlManager.initScroll(e.changedTouches[0].clientX);
 	});
 	
 	//move
-	AEvent.bindEvent(evtArea, AEvent.ACTION_MOVE, function(e)
+	acomp.bindEvent(AEvent.ACTION_MOVE, function(e)
 	{
 		if(!isDown) return;
 		
-		//asoocool
-		//e.preventDefault();
-
+		if(acomp.eventStop) e.stopPropagation();
+		
 		scrlManager.updateScroll(e.changedTouches[0].clientX, function(move)
 		{
 		});
 	});
 	
-	AEvent.bindEvent(evtArea, AEvent.ACTION_UP, function(e)
+	acomp.bindEvent(AEvent.ACTION_UP, function(e)
 	{
 		if(!isDown) return;
 		isDown = false;
 		
-		//asoocool
-		//e.preventDefault();
+		if(acomp.eventStop) e.stopPropagation();
 		
 		scrlManager.scrollCheck(e.changedTouches[0].clientX, function(move)
 		{
@@ -435,7 +436,7 @@ AEvent.prototype._swipe = function()
 			if(this.totDis<0) 
 				evtObj.direction = 'right';
 		
-			thisObj.acomp.reportEvent('swipe', evtObj, e);
+			acomp.reportEvent('swipe', evtObj, e);
 			return false;
 		});
 	});

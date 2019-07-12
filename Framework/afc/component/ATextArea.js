@@ -40,6 +40,9 @@ ATextArea.prototype.init = function(context, evtListener)
 
 ATextArea.prototype.enable = function(isEnable)
 {
+	if(isEnable) this.removeAttr('disabled');
+	else this.setAttr('disabled', 'true');
+	
 	if(isEnable)
 	{
 		var thisObj = this;

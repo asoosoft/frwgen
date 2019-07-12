@@ -46,6 +46,7 @@ ASlideView.prototype.init = function(context, evtListener)
 		moveSpeed: 100,			//이동 속도
 		moveUnit: 0,			//이동 단위
 		easing: 'linear',		//감속 옵션, easeInQuad, easeOutQuad, easeInOutQuad, ... http://gsgd.co.uk/sandbox/jquery/easing/
+		slideRatio: 0.2			//20% 정도 이동하면 다음 슬라이드로 넘어간다.
 		
 	}, true);
 
@@ -85,7 +86,7 @@ ASlideView.prototype.setMoveUnit = function(moveUnit)
 
 ASlideView.prototype.enableScrlManager = function()
 {
-	if(this.scrlManager) return;
+	if(this.scrlManager) return this.scrlManager;
 	
 	this.scrlManager = new ScrollManager();
 	this.scrlManager.setOption(
@@ -96,12 +97,18 @@ ASlideView.prototype.enableScrlManager = function()
 		speedRatio: 0.03
 	});
 	
-	this.$ele.css({'overflow':'auto', '-webkit-overflow-scrolling': '', 'z-index':0});	//가속을 위한 z-index 설정
+	//아래 주석을 풀면 preventDefault 를 사용해서 기본 스크롤 기능을 disable 해야 한다. 그럴 경우 다른 스크롤이 발생하지 않는다.
+	//현재는 overflow: hidden 을 사용하여 기본 스크롤 기능을 disable 하고 있음, preventDefault 를 사용하지 않음.
+	//this.$ele.css({'overflow':'auto', '-webkit-overflow-scrolling': '', 'z-index':0});	//가속을 위한 z-index 설정
+	
+	this.$ele.css('z-index', 0);	//가속을 위한 z-index 설정
 	
 	if(this.option.direction=='vertical') this.scrollYImplement();
 	else this.scrollXImplement();
 	
 //	this.aevent._scroll();
+
+	return this.scrlManager;
 };
 
 //function bindData(view, dataArray[i], this);
@@ -216,39 +223,24 @@ ASlideView.prototype.addItem = function(url, dataArray, isPrepend, asyncCallback
         
         newItems.push(item);
 		
-		if(typeof(url) == 'string') 
+		if(asyncCallback) 
 		{
-			if(asyncCallback) 
+			AView.createView(item, url, this, null, null, null, function(_aview)
 			{
-				AView.createView(item, url, this, null, null, null, function(_aview)
+				thisObj._afterCreated(_aview);
+
+				if(--dataLen==0 && typeof(asyncCallback)=='function') 
 				{
-					thisObj._afterCreated(_aview);
-					
-					if(--dataLen==0 && typeof(asyncCallback)=='function') 
-					{
-						asyncCallback(newItems);
-					}
-				});
-			}
-			else 
-			{
-				aview = AView.createView(item, url, this);
-				url = aview;
-			}
+					asyncCallback(newItems);
+				}
+			});
 		}
 		else 
 		{
-			var compIdPrefix = afc.makeCompIdPrefix();
+			if(i==0) aview = AView.createView(item, url, this);
 
-			aview = url.cloneComponent(compIdPrefix, function(cloneComp)
-			{
-				cloneComp.owner = thisObj;
-			});
-
-			AView.setViewInItem(aview, item, this);
-
-			//속도에 이슈가 있어 timeout 을 주지 않고 바로 호출함.
-			aview._initDoneManage(!thisObj.option.isUpdatePosition);
+			//두번째 아이템부터는 마지막 로드된 html string 으로 뷰를 생성한다.
+			else aview = AView.createView(item, url, this, null, null, null, null, AView.lastLoadedHtml);
 		}
 		
 		if(!asyncCallback) this._afterCreated(aview);
@@ -259,6 +251,11 @@ ASlideView.prototype.addItem = function(url, dataArray, isPrepend, asyncCallback
 
 ASlideView.prototype._afterCreated = function(aview)
 {
+	//슬라이드 뷰에 추가된 서브뷰 자체의 이벤트가 상위로 전달되어져야  
+	//슬라이드를 감지할 수 있다. 예를 들어 뷰에 클릭 이벤트를 등록한 경우 
+	//아래와 같이 하지 않으면 슬라이드가 동작하지 않는다.
+	aview.eventStop = false;
+	
 	if(this.delegator) this.delegator.bindData(aview.item, aview.item.itemData, this);
 
 	//델리게이터를 셋팅하지 않으면 기본적으로 서브뷰의 setData 를 호출해 준다.
@@ -350,7 +347,11 @@ ASlideView.prototype.scrollXImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//이 부분을 추가하면 다른 스크롤이 발생하지 않음.
+		//e.preventDefault();
+		
+		e.stopPropagation();
+		
 		thisObj.scrlManager.initScroll(e.changedTouches[0].clientX);
 	});
 	
@@ -358,7 +359,7 @@ ASlideView.prototype.scrollXImplement = function()
 	{
 		if(!isDown) return;
 		
-		e.preventDefault();
+		e.stopPropagation();
 		
 		thisObj.scrlManager.updateScroll(e.changedTouches[0].clientX, function(move)
 		{
@@ -371,18 +372,21 @@ ASlideView.prototype.scrollXImplement = function()
 		if(!isDown) return;
 		isDown = false;
 
-		e.preventDefault();
+		e.stopPropagation();
 
 		thisObj.scrlManager.scrollCheck(e.changedTouches[0].clientX, function(move)
 		{
-			var ratio = Math.abs(this.totDis)/thisObj.option.moveUnit;
+			//moveDelay 만큼 이동해야 실제로 움직이므로 그만큼 빼줘야 정확히 계산된다.
+			var dis = Math.abs(this.totDis) - this.option.moveDelay;
+			var ratio = dis/thisObj.option.moveUnit;
 			
-//console.log(this.oldDis);
+//console.log(dis + ',' + thisObj.option.moveUnit + ',' + ratio);
 			
-			if(ratio<0.2) thisObj.slideTo(thisObj.inx, true);//20%
-			else if(this.totDis<0) thisObj.slidePrev();
-			else if(this.totDis>0) thisObj.slideNext();
-			else thisObj.slideTo(thisObj.inx, true);//20%
+			//부모의 30% 보다 작으면 제자리로
+			if(ratio<thisObj.option.slideRatio) thisObj.slideTo(thisObj.inx, true);
+			else if(this.totDis<0) thisObj.slidePrev();//음수면 이전 방향
+			else if(this.totDis>0) thisObj.slideNext();//양수면 다음 방향
+			else thisObj.slideTo(thisObj.inx, true);
 			
 			return false;
 		});
@@ -398,7 +402,11 @@ ASlideView.prototype.scrollYImplement = function()
 	{
 		isDown = true;
 		
-		e.preventDefault();
+		//이 부분을 추가하면 다른 스크롤이 발생하지 않음.
+		//e.preventDefault();
+		
+		e.stopPropagation();
+		
 		thisObj.scrlManager.initScroll(e.changedTouches[0].clientY);
 	});
 	
@@ -406,7 +414,7 @@ ASlideView.prototype.scrollYImplement = function()
 	{
 		if(!isDown) return;
 		
-		e.preventDefault();
+		e.stopPropagation();
 		
 		thisObj.scrlManager.updateScroll(e.changedTouches[0].clientY, function(move)
 		{
@@ -419,18 +427,18 @@ ASlideView.prototype.scrollYImplement = function()
 		if(!isDown) return;
 		isDown = false;
 
-		e.preventDefault();
+		e.stopPropagation();
 
 		thisObj.scrlManager.scrollCheck(e.changedTouches[0].clientY, function(move)
 		{
-			var ratio = Math.abs(this.totDis)/thisObj.option.moveUnit;
+			var dis = Math.abs(this.totDis) - thisObj.option.moveDelay;
+			var ratio = dis/thisObj.option.moveUnit;
 			
-//console.log(this.oldDis);
-			
-			if(ratio<0.2) thisObj.slideTo(thisObj.inx, true);//20%
+			//부모의 30% 보다 작으면 제자리로
+			if(ratio<thisObj.option.slideRatio) thisObj.slideTo(thisObj.inx, true);
 			else if(this.totDis<0) thisObj.slidePrev();
 			else if(this.totDis>0) thisObj.slideNext();
-			else thisObj.slideTo(thisObj.inx, true);//20%
+			else thisObj.slideTo(thisObj.inx, true);
 			
 			return false;
 		});

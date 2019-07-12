@@ -146,13 +146,13 @@ ADataMask.prototype.removeMaskFunc = function(inx)
 ADataMask.prototype.resetElement = function()
 {
 	if(!this.ele) return;
-	var value = this.mask(this.original);
+	var value = this.mask(this.getOriginal());
 	
 	if(typeof value != 'string') value = '';
 	
 	if(this.ele.dataset.base == 'ATextField')
 	{
-		this.acomp.setAttrValue(this.original);
+		this.acomp.setAttrValue(this.getOriginal());
 		/*this.ele.value = value;
 		this.ele.setAttribute('value', this.ele.value);*/
 	}

@@ -54,28 +54,32 @@ ACalendarEvent.prototype._scroll = function()
 	if(this.bScrollBind) return;
 	this.bScrollBind = true;
 	
-	var agrid = this.acomp;
+	var agrid = this.acomp, oldScrollTop = agrid.scrollArea[0].scrollTop;
 
 	agrid.scrollArea[0].addEventListener('scroll', function(e)
 	{
-		//console.log(this.scrollHeight-this.clientHeight-this.scrollTop);
-		//console.log(this.scrollTop);
+		var bottomVal = this.scrollHeight - this.clientHeight - this.scrollTop;
 		
 		//scroll bottom
-		if(this.scrollHeight-this.clientHeight-this.scrollTop <= 1)
+		if(bottomVal < 1)	//안드로이드인 경우 0.398472 와 같이 소수점이 나올 수 있다.
 		{
-//console.log('scroll bottom');	
+			//이미 scroll bottom 이벤트가 발생했으므로 overscrolling 에 대해서는 무시한다.
+			if(afc.isIos && (this.scrollHeight-this.clientHeight-oldScrollTop) < 1) return;
+		
 			if(agrid.scrollBottomManage())
-				agrid.reportEvent('scrollbottom', e);	
+				agrid.reportEvent('scrollbottom', null, e);	
 		}
 		
 		//scroll top
-		else if(this.scrollTop == 0)
+		else if(this.scrollTop < 1)	//안드로이드인 경우 0.398472 와 같이 소수점이 나올 수 있다.
 		{
-//console.log('scroll top');				
+			if(afc.isIos && oldScrollTop < 1) return;
+			
 			if(agrid.scrollTopManage())
-				agrid.reportEvent('scrolltop', e);
+				agrid.reportEvent('scrolltop', null,  e);
 		}
+		
+		oldScrollTop = this.scrollTop;
 	});
 };
 

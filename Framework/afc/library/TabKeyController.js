@@ -71,9 +71,12 @@ TabKeyController.prototype.setTabKeyComponent = function(rootView, nofocus)
 		{
 			if(typeof rootView == "undefined") return;
 			if(!rootView.isValid()) return;
+			
 			var result = TabKeyController.findSubComp(thisObj.firstTabStop);
+			
 			if(result) result.setFocus();
 			else thisObj.firstTabStop.setFocus();
+			
 		}, 100);
 		
 	}

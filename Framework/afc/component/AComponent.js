@@ -29,8 +29,10 @@ function AComponent()
     this.$ele = null;			//jQuery object
     this.parent = null;			//parent AView
     //this.aevent = null;
-    this.eventStop = true;		//클릭 업 이벤트시 이벤트 전달 막음
-	//this.eventStop = false;
+	
+	//클릭 이벤트시 상위로 터치 이벤트 전달 막음
+	//상위 전달이 필요한 경우 개별적으로 설정(false)
+    this.eventStop = true;
     
 	this.isEnable = true;
 	this.events = null;
@@ -41,7 +43,7 @@ function AComponent()
 	this.groupName = '';
 	
 	//	드래그 & 드랍 Manager
-	this.ddManager = null;
+	//this.ddManager = null;
 	
 	//자신이 사용할 네트웍 블럭의 data key
 	this.dataKeyMap = null;
@@ -164,8 +166,15 @@ AComponent.prototype.createElement = function(context)
 	//컨텍스트를 생성하도록 문자열로 지정한 경우. 즉, 클래스 이름으로 지정
 	if(typeof(context)=="string") 
 	{
-		//var compInfo = AButton.CONTEXT;
-		var compInfo = window[context].CONTEXT;
+		var compInfo = window[context].CONTEXT;	//AButton.CONTEXT
+		
+		if(!compInfo)
+		{
+			//확장컴포넌트인 경우 부모클래스를 얻어온다.
+			context = window[context].prototype.superClass.name;
+			compInfo = window[context].CONTEXT;
+		}
+
 		context = $(compInfo.tag);
 		context.css(compInfo.defStyle);
 		this.element = context[0];
@@ -224,7 +233,7 @@ AComponent.prototype.init = function(context, evtListener)
 	//if(this.preset) this.preset.call(this);
 	if(this.beforeInit) this.beforeInit();
 	
-	//루트뷰에게 각각의 컴포넌트가 초기화 됨을 알린다.
+	//루트뷰에게 각각의 컴포넌트가 초기화 되기 이전임을 알린다.
 	if(rootView && rootView.beforeChildInit) rootView.beforeChildInit(this);
 	
 	//----------------------------------------------------------------------------------	
@@ -276,7 +285,25 @@ AComponent.prototype.init = function(context, evtListener)
 	this.loadShrinkInfo();
 	
 	// 위치 변경 Util 내부변수 설정
-	if(window._afc) this.posUtil = new PosUtil(this);
+	if(window._afc) 
+	{
+		this.posUtil = new PosUtil(this);
+		
+		//--------------------------------------------------------
+		//	data-flag="1100", 현재는 앞에 두자리만 사용
+		//	마지막 자리값이 셋팅되어져 있는 것은 예전에 사용하던 값, 이제는 사용안함.
+		//	다음 사항이 필요한 경우가 아니면, 컴포넌트 태그에 기본적으로 data-flag 는 셋팅하지 않는다.
+		
+		var flag = this.getAttr('data-flag');	
+		if(flag)
+		{
+			//개발 시점에 자신의 컴포넌트가 선택되지 않도록 하는 옵션
+			if(flag.charCodeAt(0)==0x31) this._noSelectComp = true;
+			
+			//개발 시점에 하위 컴포넌트가 선택되지 않도록 하는 옵션
+			if(flag.charCodeAt(1)==0x31) this._noChildSelect = true;
+		}
+	}
 	
 	//로컬라이징..
 	if(PROJECT_OPTION.general.localizing)
@@ -325,7 +352,7 @@ AComponent.prototype.release = function()
 	}
 
 	this.removeFromAQuery();
-	this.ddManager = null;
+	this.ddManager = undefined;
 };
 
 //현재 받은 데이터의 key에 값이 없을경우 이전 데이터를 merge함
@@ -356,6 +383,12 @@ AComponent.prototype.getContainerId = function()
 AComponent.prototype.getRootView = function()
 {
 	return this.element.rootView; 
+};
+
+//컨테이너의 메인뷰를 리턴한다.
+AComponent.prototype.getContainerView = function()
+{
+	return this.element.container.getView();
 };
 
 AComponent.prototype.getElement = function()
@@ -748,7 +781,7 @@ AComponent.prototype.removeFromView = function(onlyRelease)
     	this.$ele = null;
 		this.element = null;
 		
-		if(con) con.setTabKeyComponent();
+		if(con) con.setTabKeyComponent(true);
 	}
 };
 
@@ -851,7 +884,8 @@ AComponent.prototype.reportEventDelay = function(evtName, info, delay, event)
 	
 	setTimeout(function()
 	{
-		thisObj.reportEvent(evtName, info, event);
+		if(thisObj.isValid())
+			thisObj.reportEvent(evtName, info, event);
 		
 	}, delay);
 };
@@ -1109,6 +1143,7 @@ AComponent.prototype.loadQueryInfo = function()
 			//outblock mapping --> 필드키를 등록하지 않고도 output 영역에 컴포넌트를 등록할 수 있다.
 			else if(this.mappingType==2) aquery.addQueryComp(ctnrId, 'output', this);
 			
+			//AView 에서만 사용함
 			//child mapping -> 부모 뷰가 자식의 updateComponent 를 호출해 주므로 addQueryComp 를 하지 않는다.
 			//else if(this.mappingType==3);
 		//}
@@ -1591,12 +1626,17 @@ AComponent.prototype.getCursor = function()
 
 AComponent.prototype.setFocus = function()
 {
-	this.$ele.focus();
-	
-	AComponent.setFocusComp(this);
+	if(this.isValid())
+	{
+		this.$ele.focus();
+		AComponent.setFocusComp(this);
+	}
 };
 
 //compIdPrefix 는 AView 인 경우만 사용한다.
+
+//이미 초기화 된 컴포넌트의 클론은 문제 발생 요소가 많아 제거함
+/*
 AComponent.prototype.cloneComponent = function(compIdPrefix, beforeInit)
 {
 	if(!this.isValid()) return null;
@@ -1610,15 +1650,9 @@ AComponent.prototype.cloneComponent = function(compIdPrefix, beforeInit)
 	
 	cloneComp.init(context);
 	
-	/*
-	for(var p in this)
-	{
-		if(this.hasOwnProperty(p)) cloneComp[p] = this[p];
-	}
-	*/
-	
 	return cloneComp;
 };
+*/
 
 AComponent.prototype.getMultiAttrInfo = function(dataKey)
 {

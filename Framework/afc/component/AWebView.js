@@ -102,7 +102,7 @@ AWebView.prototype.scrollImplement = function()
 	{
 		if(awebview.scrlManagerX)
 		{
-			e.preventDefault();
+			//e.preventDefault();
 			
 			var touch1 = e.targetTouches[0];
 	       	var touch2 = e.targetTouches[1];
@@ -166,7 +166,7 @@ AWebView.prototype.scrollImplement = function()
 		
 		if(awebview.scrlManagerX)
 		{
-			e.preventDefault();
+			//e.preventDefault();
 			
 			var touch1 = e.targetTouches[0];
 	       	var touch2 = e.targetTouches[1];

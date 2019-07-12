@@ -479,6 +479,8 @@ AQuery.prototype.getTypeIndex = function(mid)
 AQuery.prototype.getName = function() { return this.query.name; };
 AQuery.prototype.getMeta = function() { return this.query.meta; };
 AQuery.prototype.getQueryType = function() { return this.query.queryType; };
+AQuery.prototype.getRealType = function() { return this.query.realType; };
+
 AQuery.prototype.getTrType = function() { return this.query.trType; };
 AQuery.prototype.getIoVer = function() { return this.query.resourceVersion; };
 

@@ -78,7 +78,7 @@ AGrid.CONTEXT =
         width:'400px', height:'300px'
     },
     
-    events: ['dblclick', 'longtab', 'select', 'scrolltop', 'scrollbottom']
+    events: ['dblclick', 'longtab', 'select', 'scroll', 'scrolltop', 'scrollbottom']
 };
 
 
@@ -93,8 +93,15 @@ AGrid.prototype.initVariables = function()
 	this.bodyTable = this.$ele.find('.grid-body-table');
 	this.scrollArea = this.bodyTable.parent();
 	
-	//this.headerTable.css('z-index', 1);
-	//this.scrollArea.css('z-index', 0);
+	if(!window._afc)
+	{
+		//그리드 보다 위에 놓은 컴포넌트를 가릴 수 있으므로 추가하면 안됨. 
+		//단, body row 의 cell 에 태그를 추가할 때... relative, absolute 로 추가하면 
+		//추가된 태그가 헤더를 덮을 수도 있음. 헤더의 z-index 를 높이거나 static 으로 태그를 추가해야 함.
+		//this.headerTable.css('z-index', 1);	
+		
+		this.scrollArea.css('z-index', 0);		//스크롤 가속을 위해 필요.
+	}
 	
 	this.showThead = this.headerTable.find('thead');
     this.hideThead = this.bodyTable.find('thead');
@@ -230,10 +237,15 @@ AGrid.prototype.init = function(context, evtListener)
 	// IOS 바디부분 스크롤 될때 바디부분 내용이 헤더영역 위로 보이는 버그때문에
 	// 헤더테이블의 순서를 바디부분 즉 스크롤영역 뒤에 위치하게 함.
 	if(afc.isIos) this.$ele.append(this.headerTable);
+	
+	
+	if(afc.isScrollIndicator) this.enableScrollIndicator();
 };
 
 AGrid.prototype.layComponent = function(acomp, row, col, width, height)
 {
+	this.getParent().addComponent(acomp);
+
 	if(width==undefined) width = '100%';
 	if(height==undefined) height = '100%';
 	
@@ -248,9 +260,10 @@ AGrid.prototype.layComponent = function(acomp, row, col, width, height)
 	$(this.getCell(row, col)).append(acomp.$ele);
 };
 
-
 AGrid.prototype.layHeaderComponent = function(acomp, row, col, width, height)
 {
+	this.getParent().addComponent(acomp);
+
 	if(width==undefined) width = '100%';
 	if(height==undefined) height = '100%';
 	
@@ -265,6 +278,39 @@ AGrid.prototype.layHeaderComponent = function(acomp, row, col, width, height)
 	$(this.getHeaderCell(row, col)).append(acomp.$ele);
 };
 
+//하나의 셀에 여러 컴포넌트가 들어갈 수 있으므로 배열을 리턴한다.
+AGrid.prototype.getCellComps = function(row, col)
+{
+	var cell = this.getCell(row, col), retArr = [];
+	
+	$(cell).children().each(function()
+	{
+		retArr.push(this.acomp);
+	});
+
+	return retArr;
+};
+
+
+AGrid.prototype.getColumnComps = function(colInx)
+{
+	var retArr = [], cell;
+	
+	this.getRows().each(function()
+	{
+		cell = $(this).children().get(colInx);
+		
+		if(cell) 
+		{
+			$(cell).children().each(function()
+			{
+				retArr.push(this.acomp);
+			});
+		}
+	});
+	
+	return retArr;
+};
 
 AGrid.prototype.getAllLaiedComps = function()
 {
@@ -280,21 +326,6 @@ AGrid.prototype.getAllLaiedComps = function()
 	});
 	
 	return retArr;
-};
-
-
-AGrid.prototype.setScrollArrow = function(headHeight)
-{
-	var sa = new ScrollArrow();
-	sa.setArrow('vertical');
-	sa.apply(this.scrollArea[0]);
-	
-	if(!headHeight)
-	{
-		if(this.option.isHideHeader) headHeight = 5;
-		else headHeight = this.hRowTmplHeight+5;
-	}
-	sa.arrow1.css('top', headHeight+'px');
 };
 
 AGrid.prototype.getDataMask = function(rowIdx, colIdx)
@@ -385,7 +416,7 @@ AGrid.prototype.transForPivot = function()
 
 AGrid.prototype.enableScrlManager = function(leftSyncArea, rightSyncArea)
 {
-	if(this.scrlManager) return;
+	if(this.scrlManager) return this.scrlManager;
 
 	var thisObj = this;
 	
@@ -395,7 +426,10 @@ AGrid.prototype.enableScrlManager = function(leftSyncArea, rightSyncArea)
 	this.scrollArea.css('-webkit-overflow-scrolling', '');	//ios overflow-scrolling delete
 	
 	this.scrollImplement(leftSyncArea, rightSyncArea);
+	
 	this.aevent._scroll();
+	
+	return this.scrlManager;
 };
 
 
@@ -409,6 +443,29 @@ AGrid.prototype.setScrollComp = function(acomp)
 {
 	this.scrollComp = acomp;
 	
+};
+
+AGrid.prototype.setScrollArrow = function(headHeight)
+{
+	this.sa = new ScrollArrow();
+	
+	this.sa.setArrow('vertical');
+	this.sa.apply(this.scrollArea[0]);
+	
+	if(!headHeight)
+	{
+		if(this.option.isHideHeader) headHeight = 5;
+		else headHeight = this.hRowTmplHeight+5;
+	}
+	
+	this.sa.arrow1.css('top', headHeight+'px');
+};
+
+AGrid.prototype.enableScrollIndicator = function()
+{
+	this.scrlIndicator = new ScrollIndicator();
+	
+	this.scrlIndicator.init('vertical', this.scrollArea[0]);
 };
 
 AGrid.prototype.scrollImplement = function(leftSyncArea, rightSyncArea) 
@@ -439,7 +496,7 @@ AGrid.prototype.scrollImplement = function(leftSyncArea, rightSyncArea)
 	
 		isDown = true;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		//자신의 스크롤 매니저가 구동의 주체가 아닌 경우
 		//다른 그리드에게 알려준다.
@@ -472,7 +529,7 @@ AGrid.prototype.scrollImplement = function(leftSyncArea, rightSyncArea)
 		if(!isDown) return;
 		isDown = false;
 		
-		e.preventDefault();
+		//e.preventDefault();
 		
 		thisObj.scrlManager.scrollCheck(e.changedTouches[0].clientY, scrlFunc);
 	});
@@ -504,15 +561,23 @@ AGrid.prototype.scrollImplement = function(leftSyncArea, rightSyncArea)
 			thisObj.scrollComp.setStyle('top', (transTop-scrlArea.scrollTop)+'px');
 		}
 		
+		//asoocool test
+		//
+		//var ratio = scrlArea.scrollTop/(scrlArea.scrollHeight-scrlArea.clientHeight);
+		//thisObj.sa.arrow1.css('top', scrlArea.clientHeight*ratio+'px');
+		//
+		
 		return true;
 	}
 	
+	/*
 	function _moveHelper(ele)
 	{
 		ele.style.webkitTransition = 'all 0.1s linear';
 		ele.style.webkitAnimationFillMode = 'forwards';
   		ele.style.webkitTransform = 'translateY(' + ele.transY + 'px)';
 	}
+	*/
 	
 };
 
@@ -524,7 +589,12 @@ AGrid.prototype.scrollTopManage = function()
 	
 //console.log('top rowCount : '+this.getRowCount());
 
-	if(this.bkManager && this.bkManager.checkHeadBackup()) return false;
+	if(this.bkManager && this.bkManager.checkHeadBackup()) 
+	{
+		if(this.bkManager.isMoveReal()) this.scrollToTop();
+		
+		return false;
+	}
 	else return true;
 };
 
@@ -535,9 +605,30 @@ AGrid.prototype.scrollBottomManage = function()
 
 //console.log('bottom rowCount : '+this.getRowCount());
 
-	if(this.bkManager && this.bkManager.checkTailBackup()) return false;
+	if(this.bkManager && this.bkManager.checkTailBackup()) 
+	{
+		if(this.bkManager.isMoveReal()) this.scrollToBottom();
+		
+		return false;
+	}
 	else return true;
 };
+
+AGrid.prototype.getRowData = function(row)
+{
+	if(typeof(row)=="number") row = this.getRow(row);
+	
+	if(row) return row._data;
+	else return null;
+};
+
+AGrid.prototype.setRowData = function(row, rowData)
+{
+	if(typeof(row)=="number") row = this.getRow(row);
+	
+	if(row) row._data = rowData;
+};
+
 
 //----------------------------------------------------------------
 //   add/remove   
@@ -555,11 +646,14 @@ AGrid.prototype.moveRow = function(fromRow, toRow)
    	toRow.before(fromRow);
 };
 
-//rowData : [1,2,3,'abc']
+//infoArr : [1,2,3,'abc']
 //하나의 row 를 추가한다.
-AGrid.prototype.addRow = function(rowData)
+AGrid.prototype.addRow = function(infoArr, rowData)
 {
-	var row = this.createRow(rowData);
+	var row = this.createRow(infoArr);
+	
+	//row 전체를 대표하는 메모리 데이터
+	if(rowData) row._data = rowData;
 	
 	if(this.bkManager && this.bkManager.appendItemManage(row) )
 	{
@@ -574,9 +668,12 @@ AGrid.prototype.addRow = function(rowData)
 };
 
 //하나의 row를 상단에 추가한다.
-AGrid.prototype.prependRow = function(rowData)
+AGrid.prototype.prependRow = function(infoArr, rowData)
 {
-	var row = this.createRow(rowData);
+	var row = this.createRow(infoArr);
+	
+	//row 전체를 대표하는 메모리 데이터
+	if(rowData) row._data = rowData;
 	
 	if(this.bkManager && this.bkManager.prependItemManage(row) ) return row;
 	
@@ -588,9 +685,12 @@ AGrid.prototype.prependRow = function(rowData)
 };
 
 //하나의 row 를 삽입한다. 
-AGrid.prototype.insertRow = function(nRow, rowData)
+AGrid.prototype.insertRow = function(nRow, infoArr, rowData)
 {
-	var row = this.createRow(rowData);
+	var row = this.createRow(infoArr);
+	
+	//row 전체를 대표하는 메모리 데이터
+	if(rowData) row._data = rowData;
 	
 	if(typeof(nRow)=="number") 
 		nRow = this.getRow(this.$rowTmpl.length * nRow);
@@ -644,8 +744,9 @@ AGrid.prototype.removeLast = function()
     if(afc.isPC) this.checkScrollbar(false);
 };
 
+//############################
+//	deprecated, use addRow(infoArr, rowData)
 
-//로우셋에 데이터를 넣고 싶은경우 호출
 AGrid.prototype.addRowWithData = function(rowData, data)
 {
 	var rows = this.addRow(rowData);
@@ -725,6 +826,8 @@ AGrid.prototype.getRowIndexByInfo = function(rowInfo)
 
 //로우 또는 로우셋 데이터를 가져오기, 
 //oridata 사용하는 것 없애기
+//############################
+//deprecated
 AGrid.prototype.getRowDataByIndex = function(rowIdx)
 {
 	return this.tBody.children().get(rowIdx).oridata;
@@ -798,7 +901,8 @@ AGrid.prototype.selectCell = function(cellArr, e)
 	
 	if(!e) e = {};
 	
-	var isCtrlKey = e.ctrlKey, isShiftKey = e.shiftKey;
+	//멀티셀렉트인 경우 모바일은 컨트롤키가 눌린것과 같이 동작한다.
+	var isCtrlKey = e.ctrlKey||afc.isMobile, isShiftKey = e.shiftKey;
 	
 	if(this.option.isSingleSelect)
 	{
@@ -1650,7 +1754,7 @@ AGrid.prototype.toggleColumn = function(colIdx)
 	else this.hideColumn(colIdx);
 };
 
-// 로테이트 : 특정 열 중 하나의 열만 보여주고 나머지는 숨김처리
+// 로테이트 : 특정 열 중 하나의 열만 보여주고 나머지는 돌아가며 보여준다.
 // colIdxArr 의 순서대로 보여준다.
 // colIdxArr : Array(number)
 AGrid.prototype.setRotateColumns = function(colIdxArr)
@@ -1911,7 +2015,7 @@ AGrid.prototype.changeRowCount = function(count, isHead)
 			{
 				var preTrIndex = tdObj.parent().prev();
 				var preTd = preTrIndex.children('td').eq(tdIdx);
-				_decreaseRowSpan(preTd[0]);
+				if(preTd[0]) _decreaseRowSpan(preTd[0]);
 			}
 			else return true;	
 		}
@@ -1955,11 +2059,16 @@ AGrid.prototype.scrollIntoArea = function(row, isAlignTop)
 AGrid.prototype.scrollToTop = function()
 {
 	//this.scrollArea[0].scrollTop = this.scrollArea[0].scrollHeight*-1;
+	
+	if(this.bkManager) this.bkManager.setMoveReal(true);
+	
 	this.scrollArea[0].scrollTop = 0;
 };
 
 AGrid.prototype.scrollToBottom = function()
 {
+	if(this.bkManager) this.bkManager.setMoveReal(true);
+	
 	this.scrollArea[0].scrollTop = this.scrollArea[0].scrollHeight;
 };
 
@@ -2012,7 +2121,8 @@ AGrid.prototype.isScroll = function()
 
 AGrid.prototype.setRow = function(rowInx, rowData, start, end)
 {
-	var $cells = $(this.getRow(rowInx)).children();
+	var $row = $(this.getRow(rowInx));
+	var $cells = $row.children();
 	
 	if(start==undefined) 
 	{
@@ -2024,7 +2134,8 @@ AGrid.prototype.setRow = function(rowInx, rowData, start, end)
 	{
 		$cells.get(i).textContent = rowData[i];
 	}
-
+	
+	return $row;
 };
 
 //rowData = [ {}, {}, ... ];
@@ -2062,20 +2173,32 @@ AGrid.prototype.setRowByObj = function(dataGrid, rowInx, rowData, start, end, da
 		{
 			if(obj.type == 'button')
 			{
-				cell.innerHTML = '<button type="button">'+ (obj.text == undefined? '': obj.text) +'</button>';
-				cell.children[0].addEventListener('click', function(e){ dataGrid.buttonClick(thisObj, rowData, e); });
+				//cell.innerHTML = '<button type="button">'+ (obj.text == undefined? '': obj.text) +'</button>';
+				
+				//datagrid_button 클래스는 스타일을 추가하거나 그룹으로 얻기 위해 추가
+				cell.innerHTML = '<button class="datagrid_button">' + obj.text + '</button>';
+				cell.children[0].addEventListener('click', function(e){ dataGrid.buttonClick(this, rowData, e); });
 			}
+			/*
 			else if(obj.type == 'sum')
 			{
-				if(obj.text != undefined) cell.textContent = obj.text;
+				//if(obj.text != undefined) cell.textContent = obj.text;
+				if(obj.text != undefined) cell.innerHTML = obj.text;
 			}
+			*/
 			else
 			{
 				if(obj.checked) cell.innerHTML = '<input type="' + obj.type + '" checked />';
 				else cell.innerHTML = '<input type="' + obj.type + '"/>';
 			}
 		}
-		else if(obj.text != undefined) cell.textContent = obj.text;
+		//else if(obj.text != undefined) cell.textContent = obj.text;
+		else if(obj.text != undefined) 
+		{
+			cell.innerHTML = obj.text;
+			
+			if(cell.shrinkInfo) AUtil.autoShrink(cell, cell.shrinkInfo);
+		}
 		
 		if(obj.rowSpan)
 		{
@@ -2088,6 +2211,11 @@ AGrid.prototype.setRowByObj = function(dataGrid, rowInx, rowData, start, end, da
 			i += obj.colSpan - 1;
 		}
 		
+		if(obj.color) cell.style.color = obj.color;
+		else cell.style.color = null;
+
+		if(obj.fontWeight) cell.style.fontWeight = obj.fontWeight;
+		else cell.style.fontWeight = null;
 	}
 
 };
@@ -2233,7 +2361,8 @@ AGrid.prototype.checkScrollbar = function(isAdd)
 AGrid.prototype.setRealMap = function(realField)
 {
 	this.realField = realField;
-	this.realMap = null;
+	// this.realMap = null; 일 경우 addPattern 이 호출되기 전에 리얼이 수신되는 경우도 있다.
+	this.realMap = {};
 };
 
 AGrid.prototype.getRealKey = function(data)
@@ -2247,7 +2376,17 @@ AGrid.prototype.setQueryData = function(dataArr, keyArr, queryData)
 	
 	if(this.option.isClearRowTmpl)
 	{
-		if(queryData.isReal) this.doRealPattern(dataArr, keyArr, queryData);
+		if(queryData.isReal) 
+		{
+			//asoocool 2019/4/19
+			//복수의 realType 을 지정하기 위해 AQuery 쪽으로 옮김
+			var realType = queryData.aquery.getRealType();
+			
+			//기존 버전도 동작하도록, 차후에 제거하도록
+			if(realType==undefined) realType = this.updateType;
+			
+			this.doRealPattern(dataArr, keyArr, queryData, realType);
+		}
 		else this.doAddPattern(dataArr, keyArr, queryData);
 	}
 	else this.doUpdatePattern(dataArr, keyArr, queryData);
@@ -2255,15 +2394,16 @@ AGrid.prototype.setQueryData = function(dataArr, keyArr, queryData)
 
 //rowSet 즉 멀티로우에 대한 리얼 처리가 안되어 있음.
 //row = this.realMap[this.getRealKey(data)]; 이 부분에서 row.each 를 실행해 처리할 필요가 있음.
-AGrid.prototype.doRealPattern = function(dataArr, keyArr, queryData)
+//realType : -1/prepend, 0/update, 1/append, 2/delete
+AGrid.prototype.doRealPattern = function(dataArr, keyArr, queryData, realType)
 {
-	var data, row, keyVal, arr, dataObj, ret;
+	var data, row, keyVal, arr;
 	
 	data = dataArr[0];
 	//dataObj = AQueryData.getDataKeyObj(data.key);
 
 	//update
-	if(this.updateType==0)
+	if(realType==0)
 	{
 		row = this.realMap[this.getRealKey(data)];
 		
@@ -2314,6 +2454,15 @@ AGrid.prototype.doRealPattern = function(dataArr, keyArr, queryData)
 		}
 	}
 	
+	else if(realType==2)
+	{
+		row = this.realMap[this.getRealKey(data)];
+		
+		if(!row) return;
+		
+		this.removeRow(row);
+	}
+	
 	//insert
 	else
 	{
@@ -2334,46 +2483,50 @@ AGrid.prototype.doRealPattern = function(dataArr, keyArr, queryData)
 		});*/
 
 		//prepend
-		if(this.updateType==-1) row = this.prependRow(arr);
+		if(realType==-1) row = this.prependRow(arr, data.row_data);
 		//append
-		else if(this.updateType==1) row = this.addRow(arr, true);
+		else if(realType==1) row = this.addRow(arr, data.row_data);
+		
+		//asoocool 2019/4/19
+		//리얼맵이 활성화 되어 있으면 추가 시점에 리얼맵을 셋팅해 준다.
+		if(this.realField!=null) 
+		{
+			//if(!this.realMap[data.key]) this.realMap[data.key] = row;
+
+			this.realMap[this.getRealKey(data)] = row;
+		}
 	}
 	
 };
 
 AGrid.prototype.doAddPattern = function(dataArr, keyArr, queryData)
 {
-	var data, row, keyVal, arr;
+	var data, row, keyVal, arr, i, j;
 	
 	//조회하는 경우 기존의 맵 정보를 지운다.
 	if(this.realField!=null) this.realMap = {};
 	
-	for(var i=0; i<dataArr.length; i++)
+	for(i=0; i<dataArr.length; i++)
 	{
 		data = dataArr[i];
 		arr = new Array(keyArr.length);
 
-		for(var j=0; j<keyArr.length; j++)
+		for(j=0; j<keyArr.length; j++)
 		{
 			keyVal = keyArr[j];
 
-			//if(keyVal) arr[j] = this.getMaskValue(j, data, keyVal);
-			
 			if(keyVal) arr[j] = data[keyVal];
-			//else arr[j] = ''; 
 		}
 
-		/*
-		//속도에 영향을 줄 것 같은데... 한번만 호출할 수 있는 다른 방법은 없는가?
-		this.$rowTmpl.find('td').each(function()
-		{
-			if(this.dm) this.dm.setQueryData(data, keyArr, queryData);
-		});*/
 		ADataMask.setQueryData(data, keyArr, queryData);
 
+/*
 		row = this.addRow(arr);
-		
 		if(data.row_data) this.setCellData(row, 0, data.row_data);
+*/
+		//addRow 함수에 로우를 추가하면서 데이터 셋팅하는 기능 추가됐음.
+		//queryData 에 row_data 란 필드를 추가하고 값을 셋팅하면 추가됨.
+		row = this.addRow(arr, data.row_data);
 
 		//리얼맵이 활성화 되어 있으면 조회 시점에 리얼맵을 만든다.
 		if(this.realField!=null) 
@@ -2584,6 +2737,12 @@ AGrid.prototype.destroyBackup = function()
 	}
 };
 
+//추가되는 순간 화면에 표시되지 않고 바로 백업되도록 한다. append 인 경우만 유효
+AGrid.prototype.setDirectBackup = function(isDirect)
+{
+	this.directBackup = isDirect;
+};
+
 //-----------------------------------------------------
 //	BackupManager delegate function
 
@@ -2601,6 +2760,7 @@ AGrid.prototype.getTotalCount = function()
 {
 	return this.getRowCount();
 };
+
 
 //--------------------------------------------------------------
 
@@ -2945,8 +3105,52 @@ AGrid.prototype.sortColumn = function(colInx, isAsc, isNumeric)
 
 };
 
+//AGrid 의 enableScrlManager 가 호출 되어졌고 스크롤 가능 영역에 추가되어져 있을 경우
+//그리드 스크롤이 끝나고(ex, scrollBottom) 상위 스크롤이 연속적으로 발생되도록 하려면
+//상위 스크롤은 enableScrlManager 가 호출되어져야 하고 자신은 overscrollBehavior 함수를 호출해야 한다.
+AGrid.prototype.overscrollBehavior = function(disableScrlManager)
+{
+	if(!this.scrlManager) return;
 
+	var thisObj = this, oldScrollTop, 
+		scrlArea = this.scrollArea[0], startY = 0, isTouchLeave = false, isRemove = true;
 
+	//touch start
+	AEvent.bindEvent(this.element, AEvent.ACTION_DOWN, function(e)
+	{
+		if(isRemove)
+		{
+			isRemove = false;
+			
+			thisObj.scrlManager.addDisableManager(disableScrlManager);
+		}
+		
+		oldScrollTop = scrlArea.scrollTop;
+		
+		startY = e.changedTouches[0].clientY;
+		
+		isTouchLeave = false;
+	});
+	
+	AEvent.bindEvent(this.element, AEvent.ACTION_MOVE, function(e)
+	{
+		if(isTouchLeave) return;
+		
+		if(Math.abs(e.changedTouches[0].clientY - startY) >= disableScrlManager.option.moveDelay) 
+		{
+			isTouchLeave = true;
+
+			//터치 이후 스크롤의 변화가 없으면 상위 스크롤이 작동되도록 해줌.
+			if(oldScrollTop==scrlArea.scrollTop)
+			{
+				isRemove = true;
+
+				thisObj.scrlManager.removeDisableManager(disableScrlManager);
+			}
+		}
+	});
+	
+};
 
 
 
